@@ -1,0 +1,61 @@
+{
+  "status": "ok", 
+  "vehicle_id": null,
+  "summary": "Front impact with cracked windshield and moderate damage on front bumper.",
+  "damaged_parts": [
+    {
+      "name": "front bumper",
+      "damage": "impact/deformation",
+      "severity": "moderate",
+      "confidence": 0.82,
+      "views_evidence": ["front", "front-left"]
+    },
+    {
+      "name": "windshield",
+      "damage": "cracked/broken glass",
+      "severity": "severe",
+      "confidence": 0.9,
+      "views_evidence": ["front"]
+    }
+  ],
+  "missing_photos": [
+    "rear"
+  ],
+  "input_images": [
+    {
+      "filename": "img_001.jpg",
+      "detected_view": "front",
+      "quality_flag": "ok",
+      "deduplicated": false
+    },
+    {
+      "filename": "img_002.jpg",
+      "detected_view": "closeup",
+      "quality_flag": "ok",
+      "deduplicated": false
+    }
+  ],
+  "suspected_total_loss": false,
+  "confidence": 0.83,
+  "raw_detections": [
+    {
+      "image": "img_001.jpg",
+      "model": "yolo-damage-v1",
+      "objects": [
+        {
+          "label": "front bumper",
+          "bbox": [120, 240, 420, 520],
+          "score": 0.84
+        },
+        {
+          "label": "crack",
+          "bbox": [200, 120, 260, 200],
+          "score": 0.91
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "processing_time_ms": 742,
+  "pipeline_version": "car-damage-v1"
+}

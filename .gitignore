@@ -1,0 +1,47 @@
+# --- Environnement / IDE ---
+.venv/
+venv/
+ENV/
+.env
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Données (on ignore les datasets bruts & dérivés lourds) ---
+data/raw/
+data/external/
+data/interim/
+data/processed/
+
+# On GARDE les annotations (export Label Studio, README)
+!data/annotations/
+!data/annotations/**
+!data/README.md
+!data/.gitkeep
+
+# --- Label Studio (si tu stockes un projet local dans le repo) ---
+label_studio/
+*.sqlite*
+*.db
+
+# --- Modèles / artefacts d'entraînement ---
+runs/
+checkpoints/
+weights/
+models/
+*.pt
+*.pth
+*.onnx
+
+# --- Divers ---
+kaggle.json

@@ -1,26 +1,39 @@
-# Supported Views – Version 1
+# Supported Photo Types (Views)
 
-This document defines the set of camera views (angles) that the pipeline should recognize from the input photos of a damaged vehicle. These views are used later to (1) detect missing photos and (2) give evidence for damaged parts.
+Each image must be labeled with **exactly one** view category.
 
-## Views
+## 📷 Allowed View Categories
 
-1. **front**  
-   Photo taken from the front of the car, roughly centered. The front bumper, grille, headlights, and windshield base should be visible.
+- front  
+- rear  
+- left  
+- right  
+- front-left  
+- front-right  
+- closeup  
 
-2. **rear**  
-   Photo taken from the rear of the car, roughly centered. The rear bumper, trunk/tailgate, and taillights should be visible.
+## ✔ Definition of Each View
 
-3. **left**  
-   Photo taken from the left side of the car, showing the left doors, left fender, and part of the front/rear.
+### front
+Vehicle photographed mainly from the front.
 
-4. **right**  
-   Photo taken from the right side of the car, showing the right doors, right fender, and part of the front/rear.
+### rear
+Vehicle photographed mainly from the rear.
 
-5. **front-left**  
-   3/4 view taken from the front-left corner. We should see the front bumper + left fender + part of the left door. Useful when the front-left area is impacted.
+### left
+Driver-side view of the car (side profile).
 
-6. **front-right**  
-   3/4 view taken from the front-right corner. We should see the front bumper + right fender + part of the right door. Useful when the front-right area is impacted.
+### right
+Passenger-side view of the car.
 
-7. **close-up**
-    zoomed in photos about the damages/
+### front-left
+Angled view between “front” and “left”.
+
+### front-right
+Angled view between “front” and “right”.
+
+### closeup
+Zoomed view focusing on a single part or damage area.
+
+## 🛑 Out-of-scope
+If the view cannot be determined → label the image as `out_of_scope` in Label Studio.

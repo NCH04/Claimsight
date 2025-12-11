@@ -1,44 +1,34 @@
-# Supported Parts – Version 1
+# Supported Parts – Version 1 (Aligned with Label Studio)
 
-This document lists the vehicle parts that the first version of the pipeline must be able to detect and link to a damage entry. The goal is to keep the scope small to reduce annotation time and deliver fast. A later version can extend this list.
+This document defines the **official list of vehicle parts** supported in Phase 1 of the damage detection pipeline.
 
-## Parts
+These parts must be annotated using **RectangleLabels** in Label Studio.
+Every annotated region must have:
+- One **part**
+- One **damage type**
+- One **severity level**
 
-1. **front bumper**  
-   Front bumper of the vehicle.
+## 🚗 Supported Parts (V1)
 
-2. **rear bumper**  
-   Rear bumper of the vehicle.
+- front bumper  
+- rear bumper  
+- hood  
+- trunk  
+- windshield  
+- front left door  
+- front right door  
+- rear left door  
+- rear right door  
+- left fender 
+- right fender
+- rear left fender
+- rear right fender
+- headlights  
+- taillights  
 
-3. **hood**  
-   Engine hood.
+## 🛑 Removed parts for V1 (not annotated)
+To reduce complexity and stay aligned with V1 requirements:
+- wheel/rim  
+- side door (unspecified)
 
-4. **trunk**  
-   Trunk / tailgate.
-
-5. **windshield**  
-   Front windshield.
-
-6. **front left door**  
-   Driver-side front door (for LHD cars) / front left door.
-
-7. **front right door**  
-   Passenger-side front door (for LHD cars) / front right door.
-
-8. **rear left door**  
-   Driver-side rear door / rear left door.
-
-9. **rear right door**  
-   Passenger-side rear door / rear right door.
-
-10. **left fender**  
-    Left front fender.
-
-11. **right fender**  
-    Right front fender.
-
-12. **headlights**  
-    Front lights group.
-
-13. **taillights**  
-    Rear lights group.  
+These can be added in V2 or V1.1 if needed.

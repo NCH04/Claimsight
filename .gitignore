@@ -18,10 +18,7 @@ Thumbs.db
 .vscode/
 
 # --- Données (on ignore les datasets bruts & dérivés lourds) ---
-data/raw/
-data/external/
-data/interim/
-data/processed/
+dataset/*
 
 # On GARDE les annotations (export Label Studio, README)
 !data/annotations/

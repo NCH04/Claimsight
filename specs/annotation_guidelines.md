@@ -18,7 +18,10 @@ We annotate up to **four levels**. If the information is not visible, we skip th
    - `right`
    - `front-left`
    - `front-right`
+   - `rear-left`
+   - `rear-right`
    - `closeup` *(use when the image is a zoom on a damaged area and the global orientation cannot be determined)*
+   - `out_of_scope` *(use when the view cannot be determined)*
 
 2. **Vehicle parts (if visible)**  
    Use the exact names from `supported_parts_v1.md`:
@@ -42,8 +45,9 @@ We annotate up to **four levels**. If the information is not visible, we skip th
    Allowed values (keep it small for v1):
    - `scratch`
    - `dent`
-   - `crack/broken_glass`
-   - `deformation/impact`
+   - `crack`
+   - `broken_glass`
+   - `deformation_impact`
    - `missing_part`
 
    If the public dataset has more detailed names, we map them (see §6).

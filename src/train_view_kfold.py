@@ -27,6 +27,22 @@ DIR_MIRROR_MAP = {
 }
 
 
+def build_model(backbone: str, num_classes: int):
+    """Construit un modèle torchvision avec la bonne tête de classification."""
+    backbone = backbone.lower()
+    if backbone == "resnet18":
+        model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        in_feats = model.fc.in_features
+        model.fc = nn.Linear(in_feats, num_classes)
+    elif backbone == "resnet34":
+        model = models.resnet34(weights=models.ResNet34_Weights.DEFAULT)
+        in_feats = model.fc.in_features
+        model.fc = nn.Linear(in_feats, num_classes)
+    else:
+        raise ValueError(f"Backbone non supporté: {backbone}")
+    return model
+
+
 class ViewDataset(Dataset):
     def __init__(self, df, images_dir, label2idx, train=True, img_size=224, mirror_prob=0.0):
         self.df = df.reset_index(drop=True)
@@ -119,17 +135,35 @@ def set_backbone_trainable(model, trainable: bool):
             param.requires_grad = trainable
 
 
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def seed_worker(worker_id):
+    # Assure la reproductibilité dans les workers DataLoader
+    base_seed = torch.initial_seed() % (2**32)
+    np.random.seed(base_seed + worker_id)
+    random.seed(base_seed + worker_id)
+
+
 def main(args):
+    set_seed(args.seed)
+
     df = pd.read_csv(args.csv_path)
 
     # On ne garde que image + view
     df = df[["image", "view"]].dropna()
+    # Exclut les closeup (non utilisées pour l'entraînement des vues)
+    df = df[df["view"] != "closeup"]
+    if args.drop_out_of_scope:
+        df = df[df["view"] != "out_of_scope"]
     
     print(len(df))
-
-    # Optionnel: filtrer closeup si tu l'as retiré mais au cas où
-    if args.drop_closeup:
-        df = df[df["view"] != "closeup"]
 
     # Labels
     labels = sorted(df["view"].unique().tolist())
@@ -141,6 +175,9 @@ def main(args):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)
+
+    g = torch.Generator()
+    g.manual_seed(args.seed)
 
     skf = StratifiedKFold(n_splits=args.k, shuffle=True, random_state=42)
 
@@ -160,6 +197,14 @@ def main(args):
             train=False, img_size=args.img_size, mirror_prob=0.0
         )
 
+        # Poids de classes (inverse freq) pour limiter le biais si dataset déséquilibré
+        counts = df_train["view"].value_counts()
+        class_weights = []
+        for l in labels:
+            w = len(df_train) / (len(labels) * counts.get(l, 1))
+            class_weights.append(w)
+        class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
+
         # Sampler optionnel pour suréchantillonner les classes rares
         if args.use_weighted_sampler:
             class_weight_map = {l: class_weights[label2idx[l]].item() for l in labels}
@@ -176,24 +221,31 @@ def main(args):
                 shuffle=False,
                 num_workers=2,
                 pin_memory=True,
+                worker_init_fn=seed_worker,
+                generator=g,
             )
         else:
             train_loader = DataLoader(
-                train_ds, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True
+                train_ds,
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=2,
+                pin_memory=True,
+                worker_init_fn=seed_worker,
+                generator=g,
             )
-        val_loader   = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=2, pin_memory=True)
+        val_loader   = DataLoader(
+            val_ds,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=2,
+            pin_memory=True,
+            worker_init_fn=seed_worker,
+            generator=g,
+        )
 
-        # Poids de classes (inverse freq) pour limiter le biais si dataset déséquilibré
-        counts = df_train["view"].value_counts()
-        class_weights = []
-        for l in labels:
-            w = len(df_train) / (len(labels) * counts.get(l, 1))
-            class_weights.append(w)
-        class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
-
-        # Modèle: ResNet18 pré-entraîné
-        model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-        model.fc = nn.Linear(model.fc.in_features, len(labels))
+        # Modèle pré-entraîné
+        model = build_model(args.backbone, num_classes=len(labels))
         model = model.to(device)
 
         if args.freeze_backbone_epochs > 0:
@@ -240,10 +292,16 @@ def main(args):
             if f1 > best_f1:
                 best_f1 = f1
                 torch.save({
+                    # Nouveau format (compatible pipeline)
+                    "model": model.state_dict(),
+                    "classes": labels,
+                    "arch": args.backbone,
+                    "img_size": args.img_size,
+                    "normalize": "imagenet",
+                    # Ancien format (compatibilité descendante)
                     "model_state": model.state_dict(),
                     "labels": labels,
                     "label2idx": label2idx,
-                    "img_size": args.img_size,
                 }, best_path)
 
             scheduler.step()
@@ -285,6 +343,8 @@ if __name__ == "__main__":
     ap.add_argument("--img_size", type=int, default=224)
     ap.add_argument("--mirror_prob", type=float, default=0.3, help="Proba d'appliquer un flip horizontal + swap gauche/droite")
     ap.add_argument("--use_weighted_sampler", action="store_true", help="Active un suréchantillonnage des classes rares")
-    ap.add_argument("--drop_closeup", action="store_true")
+    ap.add_argument("--backbone", type=str, default="resnet34", choices=["resnet18", "resnet34"], help="Backbone torchvision à utiliser")
+    ap.add_argument("--seed", type=int, default=42, help="Seed pour la reproductibilité")
+    ap.add_argument("--drop_out_of_scope", action="store_true", help="Exclut les vues out_of_scope si présentes")
     args = ap.parse_args()
     main(args)

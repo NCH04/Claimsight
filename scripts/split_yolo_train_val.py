@@ -1,58 +1,114 @@
 import os
 import random
 import shutil
+from pathlib import Path
 
-ROOT = "dataset/parts_yolo"
-IMAGES_DIR = os.path.join(ROOT, "images")
-LABELS_DIR = os.path.join(ROOT, "labels")
+ROOT = Path("dataset/parts_yolo")
+IMAGES_DIR = ROOT / "images"
+LABELS_DIR = ROOT / "labels"
 
-TRAIN_IMAGES = os.path.join(IMAGES_DIR, "train")
-VAL_IMAGES   = os.path.join(IMAGES_DIR, "val")
-TRAIN_LABELS = os.path.join(LABELS_DIR, "train")
-VAL_LABELS   = os.path.join(LABELS_DIR, "val")
+TRAIN_IMAGES = IMAGES_DIR / "train"
+VAL_IMAGES = IMAGES_DIR / "val"
+TRAIN_LABELS = LABELS_DIR / "train"
+VAL_LABELS = LABELS_DIR / "val"
 
-os.makedirs(TRAIN_IMAGES, exist_ok=True)
-os.makedirs(VAL_IMAGES, exist_ok=True)
-os.makedirs(TRAIN_LABELS, exist_ok=True)
-os.makedirs(VAL_LABELS, exist_ok=True)
+# Dossiers temporaires pour regrouper toutes les paires avant de re-split
+STAGING_IMAGES = ROOT / "_staging_images"
+STAGING_LABELS = ROOT / "_staging_labels"
 
-# Extensions possibles
-exts = {".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG"}
+VAL_RATIO = 0.2
+EXTS = {".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG", ".bmp", ".BMP", ".webp", ".jfif"}
 
-# On ne garde que les images qui ont un label .txt correspondant
-imgs = []
-for f in os.listdir(IMAGES_DIR):
-    if os.path.isdir(os.path.join(IMAGES_DIR, f)):
-        continue
-    _, ext = os.path.splitext(f)
-    if ext not in exts:
-        continue
-    stem, _ = os.path.splitext(f)
-    lab = os.path.join(LABELS_DIR, stem + ".txt")
-    if os.path.exists(lab):
-        imgs.append(f)
 
-print(f"Images avec labels: {len(imgs)}")
+def ensure_empty(dir_path: Path):
+    if dir_path.exists():
+        shutil.rmtree(dir_path)
+    dir_path.mkdir(parents=True, exist_ok=True)
 
-random.seed(42)
-random.shuffle(imgs)
 
-val_ratio = 0.2
-n_val = max(1, int(len(imgs) * val_ratio))
-val_set = set(imgs[:n_val])
-train_set = imgs[n_val:]
+def collect_pairs():
+    """Rassemble images/labels depuis images/, images/train, images/val (dedup)."""
+    src_img_dirs = [IMAGES_DIR, IMAGES_DIR / "train", IMAGES_DIR / "val"]
+    src_lbl_dirs = [LABELS_DIR, LABELS_DIR / "train", LABELS_DIR / "val"]
 
-def move_pair(img_name, dst_img_dir, dst_lbl_dir):
-    stem, _ = os.path.splitext(img_name)
-    src_img = os.path.join(IMAGES_DIR, img_name)
-    src_lbl = os.path.join(LABELS_DIR, stem + ".txt")
-    shutil.move(src_img, os.path.join(dst_img_dir, img_name))
-    shutil.move(src_lbl, os.path.join(dst_lbl_dir, stem + ".txt"))
+    def find_label(stem):
+        for d in src_lbl_dirs:
+            cand = d / f"{stem}.txt"
+            if cand.exists():
+                return cand
+        return None
 
-for img in train_set:
-    move_pair(img, TRAIN_IMAGES, TRAIN_LABELS)
+    ensure_empty(STAGING_IMAGES)
+    ensure_empty(STAGING_LABELS)
 
-for img in val_set:
-    move_pair(img, VAL_IMAGES, VAL_LABELS)
+    pairs = []
+    seen = set()
+    dup_stems = set()
+    missing_lbl = []
 
-print(f"Train: {len(train_set)}  Val: {len(val_set)}")
+    for img_dir in src_img_dirs:
+        if not img_dir.exists():
+            continue
+        for img_path in img_dir.iterdir():
+            if not img_path.is_file():
+                continue
+            if img_path.suffix not in EXTS:
+                continue
+            stem = img_path.stem
+            if stem in seen:
+                dup_stems.add(stem)
+                continue
+            lbl = find_label(stem)
+            if lbl is None:
+                missing_lbl.append(img_path.name)
+                continue
+
+            seen.add(stem)
+            dst_img = STAGING_IMAGES / img_path.name
+            dst_lbl = STAGING_LABELS / f"{stem}.txt"
+            shutil.copy2(img_path, dst_img)
+            shutil.copy2(lbl, dst_lbl)
+            pairs.append((dst_img, dst_lbl))
+
+    return pairs, dup_stems, missing_lbl
+
+
+def main():
+    pairs, dup_stems, missing_lbl = collect_pairs()
+    print(f"Total paires valides: {len(pairs)}")
+    if dup_stems:
+        print(f"Doublons ignorés: {len(dup_stems)}")
+    if missing_lbl:
+        print(f"Images sans label ignorées: {len(missing_lbl)}")
+
+    # Réinitialise les dossiers train/val
+    for d in [TRAIN_IMAGES, VAL_IMAGES, TRAIN_LABELS, VAL_LABELS]:
+        ensure_empty(d)
+
+    random.seed(42)
+    random.shuffle(pairs)
+    n_val = max(1, int(len(pairs) * VAL_RATIO)) if pairs else 0
+    val_pairs = pairs[:n_val]
+    train_pairs = pairs[n_val:]
+
+    def move_pair(pair, dst_img_dir: Path, dst_lbl_dir: Path):
+        img_path, lbl_path = pair
+        shutil.move(str(img_path), dst_img_dir / img_path.name)
+        shutil.move(str(lbl_path), dst_lbl_dir / lbl_path.name)
+
+    for p in train_pairs:
+        move_pair(p, TRAIN_IMAGES, TRAIN_LABELS)
+    for p in val_pairs:
+        move_pair(p, VAL_IMAGES, VAL_LABELS)
+
+    # Nettoyage staging
+    if STAGING_IMAGES.exists():
+        shutil.rmtree(STAGING_IMAGES)
+    if STAGING_LABELS.exists():
+        shutil.rmtree(STAGING_LABELS)
+
+    print(f"Train: {len(train_pairs)} | Val: {len(val_pairs)}")
+
+
+if __name__ == "__main__":
+    main()

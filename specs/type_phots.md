@@ -10,7 +10,10 @@ Each image must be labeled with **exactly one** view category.
 - right  
 - front-left  
 - front-right  
+- rear-left  
+- rear-right  
 - closeup  
+- out_of_scope  
 
 ## ✔ Definition of Each View
 

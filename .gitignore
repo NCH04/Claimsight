@@ -40,5 +40,8 @@ models/
 *.pth
 *.onnx
 
+# --- Outputs pipeline ---
+outputs/
+
 # --- Divers ---
 kaggle.json

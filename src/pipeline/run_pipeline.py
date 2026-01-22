@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 from typing import Dict, List, Tuple
 
 import torch
@@ -53,8 +54,27 @@ def run_pipeline(
     damage_checkpoint: str = None,
     severity_checkpoint: str = None,
 ) -> Dict:
+    t0 = time.time()
     print(f"[INFO] Listing images in {images_dir}")
-    image_paths = list_images(images_dir)
+    try:
+        image_paths = list_images(images_dir)
+    except Exception as e:
+        result = {
+            "pipeline_version": "v1",
+            "status": "error",
+            "vehicle_id": None,
+            "summary": f"Failed to list images: {e}",
+            "damaged_parts": [],
+            "missing_photos": [],
+            "input_images": [],
+            "suspected_total_loss": False,
+            "confidence": 0.0,
+            "raw_detections": [],
+            "errors": [str(e)],
+            "processing_time_ms": int((time.time() - t0) * 1000),
+        }
+        save_json(result, out_json)
+        return result
 
     print(f"[INFO] Loading view model from {view_checkpoint}")
     view_model = _load_view_model(view_checkpoint)
@@ -88,9 +108,10 @@ def run_pipeline(
         severity_preds.append((sev, s_conf))
         input_images.append({
             "filename": p.name,
-            "view_prediction": {"label": view, "confidence": v_conf},
-            "damage_prediction": {"label": dmg, "confidence": d_conf},
-            "severity_prediction": {"label": sev, "confidence": s_conf},
+            "detected_view": view,  # legacy compatibility with schema
+            "view_prediction": {"label": view, "confidence": round(v_conf, 4)},
+            "damage_prediction": {"label": dmg, "confidence": round(d_conf, 4)},
+            "severity_prediction": {"label": sev, "confidence": round(s_conf, 4)},
             "quality_flag": "ok",
             "deduplicated": False,
         })
@@ -112,19 +133,22 @@ def run_pipeline(
     result = {
         "pipeline_version": "v1",
         "status": status,
+        "vehicle_id": None,
         "summary": summary,
-        "views_detected": view_preds,
-        "input_images": input_images,
+        "damaged_parts": [],
         "missing_photos": missing,
+        "input_images": input_images,
+        "suspected_total_loss": False,
+        "confidence": round(global_conf, 4),
+        "raw_detections": [],
+        "errors": errors,
+        "processing_time_ms": int((time.time() - t0) * 1000),
         "image_level_damage": {
             "damage": agg_damage,
             "severity": agg_severity,
             "confidence": round(max(damage_conf, severity_conf), 4),
         },
-        "damaged_parts": [],
-        "raw_detections": [],
-        "confidence": round(global_conf, 4),
-        "errors": errors,
+        "views_detected": view_preds,  # debug/legacy
     }
 
     print(f"[INFO] Saving results to {out_json}")

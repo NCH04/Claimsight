@@ -24,14 +24,17 @@ def validate_schema(result: Dict, schema_path: str) -> List[str]:
     required_keys = [
         "pipeline_version",
         "status",
+        "vehicle_id",
         "summary",
-        "missing_photos",
-        "image_level_damage",
         "damaged_parts",
+        "missing_photos",
+        "input_images",
+        "suspected_total_loss",
+        "confidence",
         "raw_detections",
         "errors",
-        "input_images",
-        "confidence",
+        "processing_time_ms",
+        "image_level_damage",
     ]
     for k in required_keys:
         if k not in result:
@@ -39,6 +42,18 @@ def validate_schema(result: Dict, schema_path: str) -> List[str]:
 
     if not isinstance(result.get("input_images", None), list):
         errors.append("input_images must be a list")
+    else:
+        for i, item in enumerate(result["input_images"]):
+            if not isinstance(item, dict):
+                errors.append(f"input_images[{i}] must be a dict")
+                continue
+            for key in ["filename", "view_prediction", "damage_prediction", "severity_prediction"]:
+                if key not in item:
+                    errors.append(f"input_images[{i}] missing {key}")
+            for pred_key in ["view_prediction", "damage_prediction", "severity_prediction"]:
+                pred = item.get(pred_key, {})
+                if not isinstance(pred, dict) or "label" not in pred or "confidence" not in pred:
+                    errors.append(f"input_images[{i}].{pred_key} must have label/confidence")
     if not isinstance(result.get("missing_photos", None), list):
         errors.append("missing_photos must be a list")
     if not isinstance(result.get("damaged_parts", None), list):
@@ -50,7 +65,10 @@ def validate_schema(result: Dict, schema_path: str) -> List[str]:
     if not isinstance(result.get("image_level_damage", None), dict):
         errors.append("image_level_damage must be a dict")
 
-    # Optional check: schema file existence
+    conf = result.get("confidence", None)
+    if conf is not None and not (isinstance(conf, (int, float)) and 0.0 <= conf <= 1.0):
+        errors.append("confidence must be in [0,1]")
+
     if not Path(schema_path).exists():
         errors.append(f"Schema file not found at {schema_path} (validation skipped)")
 
@@ -87,6 +105,8 @@ def main():
             saved = json.load(f)
 
         errs = validate_schema(saved, args.schema)
+        print(f"[SANITY] status={saved.get('status')} errors_count={len(saved.get('errors', []))}")
+        print(f"[SANITY] first input_images: {saved.get('input_images', [])[:1]}")
         if errs:
             print("[SANITY] Schema validation FAILED:")
             for e in errs:

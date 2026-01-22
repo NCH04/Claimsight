@@ -11,10 +11,9 @@ def _best_view(view_preds: List[Dict]) -> str:
 def make_summary(view_preds: List[Dict], damage: str, severity: str) -> str:
     if damage == "unknown" and severity == "unknown":
         return "Insufficient evidence to assess damage."
-    if damage == "none" or severity == "none":
+    if damage == "none" and severity == "none":
         return "No visible damage detected."
     view = _best_view(view_preds)
     if severity == "unknown":
         return f"{view.title()} view shows {damage} damage."
     return f"{view.title()} view shows {severity} {damage} damage."
-

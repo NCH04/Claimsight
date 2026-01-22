@@ -39,17 +39,32 @@ python -m src.pipeline.run_pipeline \
   --out_json outputs/result.json \
   --view_checkpoint models/view.pt
 ```
-4) Exemple de sortie JSON:
+4) Exemple de sortie JSON (format aligné schema v1):
 ```json
 {
+  "pipeline_version": "v1",
+  "status": "ok",
+  "vehicle_id": null,
   "summary": "Front-left view shows moderate dent damage.",
-  "views_detected": [
-    {"image": "img1.jpg", "view": "front-left", "confidence": 0.92},
-    {"image": "img2.jpg", "view": "rear", "confidence": 0.88}
-  ],
-  "missing_photos": ["right"],
-  "image_level_damage": {"damage": "dent", "severity": "moderate", "confidence": 0.88},
   "damaged_parts": [],
-  "confidence": 0.90
+  "missing_photos": ["right"],
+  "input_images": [
+    {
+      "filename": "img1.jpg",
+      "detected_view": "front-left",
+      "view_prediction": {"label": "front-left", "confidence": 0.92},
+      "damage_prediction": {"label": "dent", "confidence": 0.88},
+      "severity_prediction": {"label": "moderate", "confidence": 0.85},
+      "quality_flag": "ok",
+      "deduplicated": false
+    }
+  ],
+  "suspected_total_loss": false,
+  "confidence": 0.90,
+  "raw_detections": [],
+  "errors": [],
+  "processing_time_ms": 742,
+  "image_level_damage": {"damage": "dent", "severity": "moderate", "confidence": 0.88},
+  "views_detected": []  // debug/legacy
 }
 ```

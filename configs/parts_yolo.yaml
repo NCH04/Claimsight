@@ -1,0 +1,23 @@
+# GÉNÉRÉ PAR scripts/build_yolo_config.py — NE PAS ÉDITER À LA MAIN.
+# Source de vérité: claimsight/domain/taxonomy.py::PART_CLASSES
+path: dataset/parts_yolo
+train: images/train
+val: images/val
+
+nc: 15
+names:
+  0: front bumper
+  1: rear bumper
+  2: hood
+  3: trunk
+  4: windshield
+  5: front left door
+  6: front right door
+  7: rear left door
+  8: rear right door
+  9: left fender
+  10: right fender
+  11: rear left fender
+  12: rear right fender
+  13: headlights
+  14: taillights

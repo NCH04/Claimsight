@@ -1,0 +1,22 @@
+{
+  "_comment": "Mapping id_source -> nom de pièce du dataset public d'origine. Repris de l'ancien scripts/clean_yolo_parts.py. Les noms doivent correspondre à src/domain/taxonomy.PART_CLASSES, ou figurer dans EXCLUDED_PARTS_V1 pour être ignorés explicitement.",
+  "mapping": {
+    "5":  "front bumper",
+    "6":  "front left door",
+    "7":  "front right door",
+    "10": "headlights",
+    "11": "hood",
+    "14": "left fender",
+    "20": "rear bumper",
+    "21": "rear left door",
+    "22": "rear left fender",
+    "23": "rear right door",
+    "24": "rear right fender",
+    "25": "rear windshield",
+    "29": "right fender",
+    "33": "taillights",
+    "34": "trunk",
+    "36": "wheel/rim",
+    "37": "windshield"
+  }
+}

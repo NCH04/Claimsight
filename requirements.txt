@@ -1,2 +1,25 @@
-label-studio==1.21.0
-label-studio-sdk==2.0.4
+# Dépendances runtime du pipeline (inférence).
+# Pour l'entraînement / YOLO / annotation, voir les extras de pyproject.toml:
+#   pip install -e ".[train]"      classifieurs view / damage / severity
+#   pip install -e ".[yolo]"       détection de pièces
+#   pip install -e ".[label]"      Label Studio
+#   pip install -e ".[all]"        tout
+#
+# CPU uniquement (plus léger) :
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+torch>=2.2
+torchvision>=0.17
+pillow>=10.0
+numpy>=1.26
+
+# --- entraînement ---
+pandas>=2.0
+scikit-learn>=1.3
+
+# --- détection de pièces ---
+# ultralytics>=8.2
+
+# --- annotation (décommenter si besoin) ---
+# label-studio==1.21.0
+# label-studio-sdk==2.0.4

@@ -8,6 +8,7 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 *.egg-info/
 dist/
 build/
@@ -19,12 +20,12 @@ Thumbs.db
 
 # --- Données (on ignore les datasets bruts & dérivés lourds) ---
 dataset/*
+!dataset/README.md
+!dataset/.gitkeep
 
-# On GARDE les annotations (export Label Studio, README)
-!data/annotations/
-!data/annotations/**
-!data/README.md
-!data/.gitkeep
+# On GARDE les annotations versionnables (export Label Studio, doc)
+!dataset/annotations/
+!dataset/annotations/**
 
 # --- Label Studio (si tu stockes un projet local dans le repo) ---
 label_studio/
@@ -40,8 +41,12 @@ models/
 *.pth
 *.onnx
 
-# --- Outputs pipeline ---
+# --- Outputs pipeline & entraînement ---
 outputs/
+outputs_view/
+
+# --- Config YOLO générée (régénérable via scripts/build_yolo_config.py) ---
+# configs/parts_yolo.yaml est versionné volontairement: c'est le contrat id<->nom.
 
 # --- Divers ---
 kaggle.json

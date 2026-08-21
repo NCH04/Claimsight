@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 
 CSV_PATH = "dataset/labels.csv"

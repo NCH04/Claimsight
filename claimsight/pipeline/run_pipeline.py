@@ -1,0 +1,277 @@
+"""Pipeline V1: vues + dégât/gravité au niveau image.
+
+    python -m claimsight.pipeline.run_pipeline --images_dir dataset/images_mapped \
+        --out_json outputs/result.json --view_checkpoint models/view.pt
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import time
+
+from ..domain.aggregation import (
+    aggregate_damage,
+    aggregate_severity,
+    build_findings,
+    global_confidence,
+    suspect_total_loss,
+    worst_finding,
+)
+from ..domain.dedup import find_duplicates, hash_images
+from ..domain.taxonomy import UNKNOWN
+from .config import (
+    CONFIDENCE_WEIGHTS,
+    DEDUP_HAMMING_THRESHOLD,
+    INFERENCE_BATCH_SIZE,
+    TOTAL_LOSS_SEVERE_IMAGES,
+)
+from .io_utils import list_images, load_image, save_json
+from .missing_photos import detect_missing
+from .models import ModelBundle
+from .summary import make_summary
+
+LOGGER = logging.getLogger(__name__)
+
+PIPELINE_VERSION = "v1"
+
+
+def _empty_result(t0: float, message: str, errors: list[str]) -> dict:
+    return {
+        "pipeline_version": PIPELINE_VERSION,
+        "status": "error",
+        "vehicle_id": None,
+        "summary": message,
+        "damaged_parts": [],
+        "missing_photos": [],
+        "input_images": [],
+        "suspected_total_loss": False,
+        "confidence": 0.0,
+        "raw_detections": [],
+        "errors": errors,
+        "warnings": [],
+        "processing_time_ms": int((time.time() - t0) * 1000),
+        "image_level_damage": {"damage": "unknown", "severity": "unknown", "confidence": 0.0},
+        "views_detected": [],
+    }
+
+
+def run_pipeline(
+    images_dir: str,
+    out_json: str | None = None,
+    view_checkpoint: str = "models/view.pt",
+    damage_checkpoint: str | None = None,
+    severity_checkpoint: str | None = None,
+    bundle: ModelBundle | None = None,
+    recursive: bool = False,
+    batch_size: int = INFERENCE_BATCH_SIZE,
+    thresholds: dict | None = None,
+    dedup_threshold: int = DEDUP_HAMMING_THRESHOLD,
+) -> dict:
+    """Analyse un dossier d'images et retourne le rapport V1.
+
+    Args:
+        bundle: modèles déjà chargés. À privilégier dans un service — sinon
+            les trois modèles sont rechargés à chaque appel.
+
+    Ne lève jamais: tout échec est rendu sous forme de résultat `status=error`,
+    de sorte qu'un appelant HTTP obtienne toujours un corps exploitable.
+    """
+    t0 = time.time()
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    try:
+        image_paths = list_images(images_dir, recursive=recursive)
+    except Exception as exc:
+        LOGGER.error("Listing des images impossible: %s", exc)
+        result = _empty_result(t0, f"Listing des images impossible: {exc}", [str(exc)])
+        if out_json:
+            save_json(result, out_json)
+        return result
+
+    try:
+        if bundle is None:
+            LOGGER.info("Chargement des modèles (view=%s)", view_checkpoint)
+            bundle = ModelBundle.load(
+                view_checkpoint, damage_checkpoint, severity_checkpoint,
+                thresholds=thresholds,
+            )
+    except Exception as exc:
+        LOGGER.error("Chargement des modèles impossible: %s", exc)
+        result = _empty_result(t0, f"Chargement des modèles impossible: {exc}", [str(exc)])
+        if out_json:
+            save_json(result, out_json)
+        return result
+
+    if not bundle.damage.available:
+        warnings.append("Modèle `damage` non entraîné: prédictions `unknown`.")
+    if not bundle.severity.available:
+        warnings.append("Modèle `severity` non entraîné: prédictions `unknown`.")
+
+    # Décodage: on isole les images illisibles sans faire échouer le dossier.
+    images, kept_paths = [], []
+    for path in image_paths:
+        try:
+            images.append(load_image(path))
+            kept_paths.append(path)
+        except Exception as exc:
+            errors.append(f"{path.name}: {exc}")
+
+    if not images:
+        result = _empty_result(t0, "Aucune image exploitable.", errors)
+        result["warnings"] = warnings
+        if out_json:
+            save_json(result, out_json)
+        return result
+
+    # Déduplication AVANT agrégation: plusieurs prises du même angle ne
+    # doivent ni peser plusieurs fois dans le constat, ni faire croire à une
+    # couverture photo plus large qu'elle ne l'est.
+    duplicate_of = find_duplicates(hash_images(images), threshold=dedup_threshold)
+    n_dupes = sum(1 for d in duplicate_of if d is not None)
+    if n_dupes:
+        LOGGER.info("%d doublon(s) détecté(s) et exclus de l'agrégation", n_dupes)
+
+    t_infer = time.time()
+    view_preds = bundle.view.predict_batch(images, batch_size)
+    damage_preds = bundle.damage.predict_batch(images, batch_size)
+    severity_preds = bundle.severity.predict_batch(images, batch_size)
+    inference_ms = int((time.time() - t_infer) * 1000)
+
+    filenames = [p.name for p in kept_paths]
+    input_images = [
+        {
+            "filename": name,
+            "detected_view": view.label,  # compat schéma v1
+            "view_prediction": view.as_dict(),
+            "damage_prediction": damage.as_dict(),
+            "severity_prediction": severity.as_dict(),
+            # `unknown` signifie ici « sous le seuil de confiance »: la photo
+            # est exploitable mais son orientation n'est pas fiable.
+            "quality_flag": "low_confidence" if view.label == UNKNOWN else "ok",
+            "deduplicated": dup is not None,
+            "duplicate_of": filenames[dup] if dup is not None else None,
+        }
+        for name, view, damage, severity, dup in zip(
+            filenames, view_preds, damage_preds, severity_preds, duplicate_of, strict=True
+        )
+    ]
+
+    # Seuls les originaux alimentent le constat.
+    keep = [i for i, dup in enumerate(duplicate_of) if dup is None]
+    findings = build_findings(
+        [filenames[i] for i in keep],
+        [damage_preds[i] for i in keep],
+        [severity_preds[i] for i in keep],
+    )
+    unique_views = [view_preds[i] for i in keep]
+
+    agg_damage = aggregate_damage(findings)
+    agg_severity = aggregate_severity(findings)
+    worst = worst_finding(findings)
+
+    # Une vue `unknown` (sous le seuil) ne compte pas comme couverture.
+    missing = detect_missing(p.label for p in unique_views)
+
+    legacy_views = [
+        {"image": filenames[i], "view": view_preds[i].label, "confidence": view_preds[i].confidence}
+        for i in keep
+    ]
+
+    result = {
+        "pipeline_version": PIPELINE_VERSION,
+        "status": "ok_with_warnings" if (errors or warnings) else "ok",
+        "vehicle_id": None,
+        "summary": make_summary(legacy_views, agg_damage.label, agg_severity.label),
+        "damaged_parts": [],
+        "missing_photos": missing,
+        "input_images": input_images,
+        "suspected_total_loss": suspect_total_loss(findings, TOTAL_LOSS_SEVERE_IMAGES),
+        "confidence": round(
+            global_confidence(
+                [p.confidence for p in unique_views],
+                agg_damage.confidence if bundle.damage.available else None,
+                CONFIDENCE_WEIGHTS,
+            ),
+            4,
+        ),
+        "raw_detections": [],
+        "errors": errors,
+        "warnings": warnings,
+        "processing_time_ms": int((time.time() - t0) * 1000),
+        "inference_time_ms": inference_ms,
+        "duplicates_removed": n_dupes,
+        "image_level_damage": {
+            "damage": agg_damage.label,
+            "severity": agg_severity.label,
+            # Confiance de la constatation retenue, bornée par son maillon le
+            # plus faible — et non un max() entre deux modèles distincts
+            # portant potentiellement sur deux images différentes.
+            "confidence": round(worst.confidence(), 4) if worst else 0.0,
+            "evidence_image": worst.filename if worst else None,
+        },
+        "views_detected": legacy_views,  # debug/legacy
+    }
+
+    if out_json:
+        LOGGER.info("Résultat -> %s", out_json)
+        save_json(result, out_json)
+    return result
+
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(
+        description="Pipeline V1 (vues + dégât/gravité image-level).",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    ap.add_argument("--images_dir", required=True)
+    ap.add_argument("--out_json", default="outputs/result.json")
+    ap.add_argument("--view_checkpoint", default="models/view.pt")
+    ap.add_argument("--damage_checkpoint", default=None)
+    ap.add_argument("--severity_checkpoint", default=None)
+    ap.add_argument("--recursive", action="store_true")
+    ap.add_argument("--batch_size", type=int, default=INFERENCE_BATCH_SIZE)
+    ap.add_argument("--min_view_confidence", type=float, default=None,
+                    help="Sous ce seuil la vue devient `unknown` et ne compte plus comme couverture photo")
+    ap.add_argument("--min_damage_confidence", type=float, default=None)
+    ap.add_argument("--min_severity_confidence", type=float, default=None)
+    ap.add_argument("--dedup_threshold", type=int, default=DEDUP_HAMMING_THRESHOLD,
+                    help="Distance de Hamming max entre dHash pour un doublon (0 = identiques stricts)")
+    ap.add_argument("--log_level", default="INFO")
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO),
+                        format="%(levelname)s %(message)s")
+    thresholds = {
+        name: value
+        for name, value in (
+            ("view", args.min_view_confidence),
+            ("damage", args.min_damage_confidence),
+            ("severity", args.min_severity_confidence),
+        )
+        if value is not None
+    }
+    result = run_pipeline(
+        images_dir=args.images_dir,
+        out_json=args.out_json,
+        view_checkpoint=args.view_checkpoint,
+        damage_checkpoint=args.damage_checkpoint,
+        severity_checkpoint=args.severity_checkpoint,
+        recursive=args.recursive,
+        batch_size=args.batch_size,
+        thresholds=thresholds or None,
+        dedup_threshold=args.dedup_threshold,
+    )
+    for warning in result.get("warnings", []):
+        LOGGER.warning(warning)
+    for err in result.get("errors", []):
+        LOGGER.error(err)
+    return 0 if result["status"] != "error" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

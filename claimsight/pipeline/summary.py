@@ -1,14 +1,11 @@
-from typing import Dict, List
-
-
-def _best_view(view_preds: List[Dict]) -> str:
+def _best_view(view_preds: list[dict]) -> str:
     if not view_preds:
         return "Unknown view"
     best = max(view_preds, key=lambda x: x.get("confidence", 0.0))
     return best.get("view", "Unknown view")
 
 
-def make_summary(view_preds: List[Dict], damage: str, severity: str) -> str:
+def make_summary(view_preds: list[dict], damage: str, severity: str) -> str:
     if damage == "unknown" and severity == "unknown":
         return "Insufficient evidence to assess damage."
     if damage == "none" and severity == "none":

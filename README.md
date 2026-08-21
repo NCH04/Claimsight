@@ -1,9 +1,11 @@
-# Assurance_agent
+# ClaimSight
 
 # Run commande:
-python src/train_view_kfold.py \
+python -m claimsight.training.train_classifier \
+  --task view \
   --csv_path dataset/labels.csv \
   --images_dir dataset/images_mapped \
+  --final_fit \
   --k 5 \
   --epochs 35 \
   --batch_size 16 \
@@ -30,11 +32,11 @@ python src/train_view_kfold.py \
 - Option pour exclure `out_of_scope`: `--drop_out_of_scope`.
 
 ## How to run V1 pipeline (view + image-level damage/severity)
-1) Place/convert votre checkpoint de vue dans `models/view.pt` avec les clés: `model`, `classes`, `arch`, `img_size`, `normalize` (format torch.save). Si absent, le pipeline lèvera une erreur et vous rappellera de le générer via `src/train_view_kfold.py`.
+1) Place/convert votre checkpoint de vue dans `models/view.pt` avec les clés: `model`, `classes`, `arch`, `img_size`, `normalize` (format torch.save). Si absent, le pipeline lèvera une erreur et vous rappellera de le générer via `python -m claimsight.training.train_classifier --task view --final_fit`.
 2) (Optionnel) Placez des checkpoints damage/severity au même format (sinon stubs “unknown” seront utilisés).
 3) Exécutez:
 ```
-python -m src.pipeline.run_pipeline \
+python -m claimsight.pipeline.run_pipeline \
   --images_dir dataset/images_mapped \
   --out_json outputs/result.json \
   --view_checkpoint models/view.pt

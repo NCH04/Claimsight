@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from collections.abc import Iterable
 
 FRONT = {"front", "front-left", "front-right"}
 REAR = {"rear", "rear-left", "rear-right"}
@@ -6,7 +6,7 @@ LEFT = {"left", "front-left", "rear-left"}
 RIGHT = {"right", "front-right", "rear-right"}
 
 
-def detect_missing(views: Iterable[str]) -> List[str]:
+def detect_missing(views: Iterable[str]) -> list[str]:
     """Retourne la liste des catégories manquantes parmi front/rear/left/right."""
     views_set = set(views)
     missing = []

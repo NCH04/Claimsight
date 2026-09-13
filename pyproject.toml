@@ -60,6 +60,7 @@ all = [
 [project.scripts]
 claimsight = "claimsight.pipeline.run_pipeline:main"
 claimsight-train = "claimsight.training.train_classifier:main"
+claimsight-train-parts = "claimsight.training.train_parts_yolo:main"
 
 [tool.setuptools.packages.find]
 include = ["claimsight*"]

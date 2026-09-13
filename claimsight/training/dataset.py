@@ -58,11 +58,29 @@ class ClassificationDataset(Dataset):
             )
         return local
 
+    def _multilabel_target(self, row, flip: bool):
+        """Vecteur 0/1 sur les classes de la tâche, gauche/droite permutées si flip."""
+        import torch
+
+        classes = list(self.task.classes)
+        present = {c for c in classes if int(row[c]) == 1}
+        if flip:
+            present = {self.task.mirrored_label(c) for c in present}
+        return torch.tensor([1.0 if c in present else 0.0 for c in classes], dtype=torch.float32)
+
     def __getitem__(self, i):
         row = self.df.iloc[i]
-        label = str(row[self.task.label_column])
         img = load_rgb(self.resolve_path(str(row["image"])))
 
+        if self.task.multilabel:
+            # Le flip est toujours valide ici: il permute simplement les faces
+            # gauche et droite du vecteur cible.
+            flip = self.mirror_prob > 0 and random.random() < self.mirror_prob
+            if flip:
+                img = ImageOps.mirror(img)
+            return self.transform(img), self._multilabel_target(row, flip)
+
+        label = str(row[self.task.label_column])
         if (
             self.mirror_prob > 0
             and self.task.can_mirror(label)

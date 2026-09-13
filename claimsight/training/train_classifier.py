@@ -40,7 +40,15 @@ from ..ml.backbones import SUPPORTED_BACKBONES, backbone_head_prefixes, build_ba
 from ..ml.checkpoint import CheckpointMeta, save_checkpoint
 from ..ml.transforms import RESIZE_MODES, build_eval_transform, build_train_transform
 from .dataset import ClassificationDataset
-from .metrics import aggregate_folds, compute_metrics, format_confusion, full_report
+from .metrics import (
+    aggregate_folds,
+    compute_metrics,
+    compute_multilabel_metrics,
+    format_confusion,
+    format_multilabel,
+    full_report,
+    multilabel_report,
+)
 from .tasks import TASKS, TaskConfig, get_task
 
 LOGGER = logging.getLogger("train")
@@ -70,9 +78,69 @@ def set_backbone_trainable(model: nn.Module, arch: str, trainable: bool) -> None
 
 
 # --------------------------------------------------------------------------- data
-def load_dataframe(args, task: TaskConfig) -> tuple[pd.DataFrame, list[str], str | None]:
+def load_dataframe(args, task: TaskConfig):
     df = pd.read_csv(args.csv_path)
 
+    if task.multilabel:
+        return _load_multilabel(df, args, task)
+    return _load_singlelabel(df, args, task)
+
+
+def _stratify_key(df, task: TaskConfig) -> pd.Series:
+    """Clé de stratification.
+
+    En multi-label il n'existe pas de classe unique à stratifier : on utilise
+    la COMBINAISON de faces comme strate, ce qui préserve la proportion des
+    combinaisons rares (les flancs) entre les folds.
+    """
+    if task.multilabel:
+        return df[list(task.classes)].astype(int).astype(str).agg("".join, axis=1)
+    return df[task.label_column]
+
+
+def _resolve_group(df, args):
+    group_col = args.group_column if args.group_column in df.columns else None
+    if args.group_column and group_col is None:
+        LOGGER.warning(
+            "Colonne de groupe %r absente du CSV -> split NON groupé. "
+            "Si plusieurs photos partagent un véhicule, les métriques seront optimistes.",
+            args.group_column,
+        )
+    return group_col
+
+
+def _load_multilabel(df, args, task: TaskConfig):
+    missing = {"image", *task.classes} - set(df.columns)
+    if missing:
+        raise SystemExit(
+            f"Colonnes manquantes dans {args.csv_path}: {sorted(missing)}.\n"
+            f"Une tâche multi-label attend une colonne 0/1 par classe: "
+            f"image, {', '.join(task.classes)}.\n"
+            f"Colonnes présentes: {sorted(df.columns)}"
+        )
+    group_col = _resolve_group(df, args)
+    cols = ["image", *task.classes] + ([group_col] if group_col else [])
+    df = df[cols].dropna(subset=["image", *task.classes]).copy()
+    for c in task.classes:
+        df[c] = df[c].astype(int)
+
+    # Une image sans aucune face n'apprend rien d'utile au modèle.
+    before = len(df)
+    df = df[df[list(task.classes)].sum(axis=1) > 0]
+    if before != len(df):
+        LOGGER.info("%d image(s) sans aucune face retirée(s)", before - len(df))
+
+    counts = df[list(task.classes)].sum()
+    rare = [c for c in task.classes if counts[c] < args.k]
+    if rare:
+        raise SystemExit(
+            f"Classes avec moins de {args.k} exemples positifs: "
+            f"{ {c: int(counts[c]) for c in rare} }. Réduisez --k ou collectez plus de données."
+        )
+    return df.reset_index(drop=True), list(task.classes), group_col
+
+
+def _load_singlelabel(df, args, task: TaskConfig):
     required = {"image", task.label_column}
     missing = required - set(df.columns)
     if missing:
@@ -81,17 +149,8 @@ def load_dataframe(args, task: TaskConfig) -> tuple[pd.DataFrame, list[str], str
             f"Colonnes présentes: {sorted(df.columns)}"
         )
 
-    cols = ["image", task.label_column]
-    group_col = args.group_column if args.group_column in df.columns else None
-    if args.group_column and group_col is None:
-        LOGGER.warning(
-            "Colonne de groupe %r absente du CSV -> split NON groupé. "
-            "Si plusieurs photos partagent un véhicule, les métriques seront optimistes.",
-            args.group_column,
-        )
-    if group_col:
-        cols.append(group_col)
-
+    group_col = _resolve_group(df, args)
+    cols = ["image", task.label_column] + ([group_col] if group_col else [])
     df = df[cols].dropna(subset=["image", task.label_column])
     df[task.label_column] = df[task.label_column].astype(str).str.strip()
 
@@ -111,8 +170,6 @@ def load_dataframe(args, task: TaskConfig) -> tuple[pd.DataFrame, list[str], str
             f"Corrigez le CSV ou claimsight/domain/taxonomy.py."
         )
 
-    # On n'entraîne que sur les classes réellement présentes: une classe à 0
-    # exemple produirait une colonne de logits jamais supervisée.
     present = [c for c in task.classes if c in set(df[task.label_column])]
     counts = df[task.label_column].value_counts()
     too_rare = [c for c in present if counts[c] < args.k]
@@ -143,7 +200,10 @@ def make_train_loader(df_train, args, task, label2idx, train_tf) -> DataLoader:
     g = torch.Generator()
     g.manual_seed(args.seed)
 
-    if args.use_weighted_sampler:
+    if args.use_weighted_sampler and task.multilabel:
+        LOGGER.warning("--use_weighted_sampler ignoré en multi-label "
+                       "(pas de classe unique par image); la pondération passe par pos_weight.")
+    if args.use_weighted_sampler and not task.multilabel:
         counts = df_train[task.label_column].value_counts()
         weights = df_train[task.label_column].map(lambda lbl: 1.0 / counts[lbl]).to_numpy()
         sampler = WeightedRandomSampler(
@@ -161,6 +221,20 @@ def make_eval_loader(df_eval, args, task, label2idx, eval_tf) -> DataLoader:
         df_eval, args.images_dir, label2idx, task, eval_tf, train=False,
     )
     return DataLoader(ds, shuffle=False, **_loader_kwargs(args))
+
+
+def pos_weight_for(df_train, labels, device) -> torch.Tensor:
+    """`pos_weight` de BCEWithLogitsLoss: negatifs/positifs, par classe.
+
+    Indispensable ici: `left` et `right` ne représentent que ~7 % des images,
+    et sans repondération le modèle apprend à toujours répondre « absent ».
+    """
+    n = len(df_train)
+    weights = []
+    for label in labels:
+        pos = max(int(df_train[label].sum()), 1)
+        weights.append((n - pos) / pos)
+    return torch.tensor(weights, dtype=torch.float32, device=device)
 
 
 def class_weights_for(df_train, labels, task, device) -> torch.Tensor:
@@ -188,13 +262,23 @@ def train_one_epoch(model, loader, optimizer, criterion, device) -> float:
 
 
 @torch.inference_mode()
-def evaluate(model, loader, device) -> tuple[np.ndarray, np.ndarray]:
+def evaluate(model, loader, device, multilabel: bool = False,
+             threshold: float = 0.5) -> tuple[np.ndarray, np.ndarray]:
+    """Prédictions sur un loader.
+
+    Mono-label: argmax du softmax. Multi-label: chaque classe est indépendante,
+    donc sigmoïde puis seuil — une image peut documenter deux faces à la fois.
+    """
     model.eval()
     ys, preds = [], []
     for x, y in loader:
         logits = model(x.to(device, non_blocking=True))
-        preds.extend(torch.argmax(logits, dim=1).cpu().tolist())
-        ys.extend(y.tolist())
+        if multilabel:
+            preds.extend((torch.sigmoid(logits) >= threshold).int().cpu().tolist())
+            ys.extend(y.int().cpu().tolist())
+        else:
+            preds.extend(torch.argmax(logits, dim=1).cpu().tolist())
+            ys.extend(y.tolist())
     return np.asarray(ys), np.asarray(preds)
 
 
@@ -240,13 +324,15 @@ def fit(
             best_epoch = epoch
             continue
 
-        y_true, y_pred = evaluate(model, sel_loader, device)
-        m = compute_metrics(y_true, y_pred, labels, ordinal=task.ordinal)
+        y_true, y_pred = evaluate(model, sel_loader, device, task.multilabel, args.threshold)
+        m = (compute_multilabel_metrics(y_true, y_pred, labels) if task.multilabel
+             else compute_metrics(y_true, y_pred, labels, ordinal=task.ordinal))
         score = m["macro_f1"]
         history.append({"epoch": epoch, "loss": loss, **m})
+        primary = m.get("accuracy", m.get("exact_match", 0.0))
         LOGGER.info(
-            "  epoch %02d | loss=%.4f | sel_acc=%.4f | sel_macroF1=%.4f",
-            epoch, loss, m["accuracy"], score,
+            "  epoch %02d | loss=%.4f | sel_%s=%.4f | sel_macroF1=%.4f",
+            epoch, loss, "exact" if task.multilabel else "acc", primary, score,
         )
 
         if score > best_score:
@@ -271,6 +357,18 @@ def fit(
 
 
 # --------------------------------------------------------------------------- main
+def _make_criterion(df_train, labels, task: TaskConfig, args, device) -> nn.Module:
+    """CrossEntropy pour une tâche exclusive, BCE pour une tâche multi-label."""
+    if task.multilabel:
+        return nn.BCEWithLogitsLoss(
+            pos_weight=pos_weight_for(df_train, labels, device) if args.class_weights else None
+        )
+    return nn.CrossEntropyLoss(
+        weight=class_weights_for(df_train, labels, task, device) if args.class_weights else None,
+        label_smoothing=args.label_smoothing,
+    )
+
+
 def build_splitter(args, group_col):
     if group_col:
         return StratifiedGroupKFold(n_splits=args.k, shuffle=True, random_state=args.seed), True
@@ -287,7 +385,11 @@ def run(args) -> dict:
 
     LOGGER.info("Tâche      : %s — %s", task.name, task.description)
     LOGGER.info("Images     : %d | classes: %d %s", len(df), len(labels), labels)
-    LOGGER.info("Répartition: %s", df[task.label_column].value_counts().to_dict())
+    if task.multilabel:
+        LOGGER.info("Répartition: %s (positifs par face)",
+                    {c: int(df[c].sum()) for c in labels})
+    else:
+        LOGGER.info("Répartition: %s", df[task.label_column].value_counts().to_dict())
     LOGGER.info("Device     : %s | backbone: %s | img_size: %d | resize: %s",
                 device, args.backbone, args.img_size, args.resize_mode)
     LOGGER.info("Split      : %s", f"groupé par {group_col!r}" if group_col else "PAR IMAGE (non groupé)")
@@ -305,7 +407,8 @@ def run(args) -> dict:
     fold_details: list[dict] = []
     best_epochs: list[int] = []
 
-    for fold, (tr_idx, va_idx) in enumerate(splitter.split(df, df[task.label_column], groups)):
+    strata = _stratify_key(df, task)
+    for fold, (tr_idx, va_idx) in enumerate(splitter.split(df, strata, groups)):
         LOGGER.info("\n===== FOLD %d/%d =====", fold + 1, args.k)
         df_tr_full = df.iloc[tr_idx].copy()
         df_va = df.iloc[va_idx].copy()
@@ -318,7 +421,7 @@ def run(args) -> dict:
                 df_tr, sel_df = train_test_split(
                     df_tr_full,
                     test_size=args.holdout_ratio,
-                    stratify=df_tr_full[task.label_column],
+                    stratify=_stratify_key(df_tr_full, task),
                     random_state=args.seed,
                 )
             except ValueError:
@@ -336,23 +439,28 @@ def run(args) -> dict:
 
         model = build_backbone(args.backbone, len(labels), pretrained=not args.no_pretrained)
         model.to(device)
-        criterion = nn.CrossEntropyLoss(
-            weight=class_weights_for(df_tr, labels, task, device) if args.class_weights else None,
-            label_smoothing=args.label_smoothing,
-        )
+        criterion = _make_criterion(df_tr, labels, task, args, device)
 
         model, hist = fit(model, train_loader, sel_loader, criterion, args, labels, task, device)
         best_epochs.append(hist["best_epoch"])
 
-        y_true, y_pred = evaluate(model, val_loader, device)
-        m = compute_metrics(y_true, y_pred, labels, ordinal=task.ordinal)
-        rep = full_report(y_true, y_pred, labels)
+        y_true, y_pred = evaluate(model, val_loader, device, task.multilabel, args.threshold)
+        if task.multilabel:
+            m = compute_multilabel_metrics(y_true, y_pred, labels)
+            rep = multilabel_report(y_true, y_pred, labels)
+            headline = f"exact={m['exact_match']:.4f} macroF1={m['macro_f1']:.4f}"
+            table = format_multilabel(rep)
+        else:
+            m = compute_metrics(y_true, y_pred, labels, ordinal=task.ordinal)
+            rep = full_report(y_true, y_pred, labels)
+            headline = f"acc={m['accuracy']:.4f} macroF1={m['macro_f1']:.4f}"
+            table = format_confusion(rep["confusion_matrix"], labels)
         fold_metrics.append(m)
         fold_details.append({"fold": fold, **m, **hist, **rep})
 
-        LOGGER.info("  [fold %d] VALIDATION acc=%.4f macroF1=%.4f (best_epoch=%d)",
-                    fold + 1, m["accuracy"], m["macro_f1"], hist["best_epoch"])
-        LOGGER.info("\n%s", format_confusion(rep["confusion_matrix"], labels))
+        LOGGER.info("  [fold %d] VALIDATION %s (best_epoch=%d)",
+                    fold + 1, headline, hist["best_epoch"])
+        LOGGER.info("\n%s", table)
 
         ckpt_path = out_dir / f"{task.name}_fold{fold}.pt"
         save_checkpoint(
@@ -361,7 +469,7 @@ def run(args) -> dict:
             CheckpointMeta(
                 arch=args.backbone, classes=labels, img_size=args.img_size,
                 resize_mode=args.resize_mode, normalize="imagenet",
-                task=task.name, metrics=m,
+                task=task.name, multilabel=task.multilabel, metrics=m,
             ),
         )
 
@@ -393,10 +501,7 @@ def run(args) -> dict:
         final_args.early_stopping_patience = 0
         train_loader = make_train_loader(df, args, task, label2idx, train_tf)
         model = build_backbone(args.backbone, len(labels), pretrained=not args.no_pretrained).to(device)
-        criterion = nn.CrossEntropyLoss(
-            weight=class_weights_for(df, labels, task, device) if args.class_weights else None,
-            label_smoothing=args.label_smoothing,
-        )
+        criterion = _make_criterion(df, labels, task, args, device)
         model, _ = fit(model, train_loader, None, criterion, final_args, labels, task, device)
         final_path = out_dir / f"{task.name}.pt"
         save_checkpoint(
@@ -404,6 +509,7 @@ def run(args) -> dict:
             CheckpointMeta(
                 arch=args.backbone, classes=labels, img_size=args.img_size,
                 resize_mode=args.resize_mode, normalize="imagenet", task=task.name,
+                multilabel=task.multilabel,
                 metrics={k: v["mean"] for k, v in summary.items()},
             ),
         )
@@ -440,6 +546,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--lr_step_size", type=int, default=8)
     ap.add_argument("--lr_gamma", type=float, default=0.1)
     ap.add_argument("--label_smoothing", type=float, default=0.05)
+    ap.add_argument("--threshold", type=float, default=0.5,
+                    help="Multi-label: seuil sigmoïde au-delà duquel une classe est prédite présente")
     ap.add_argument("--early_stopping_patience", type=int, default=8, help="0 = désactivé")
     ap.add_argument("--freeze_backbone_epochs", type=int, default=1, help="0 = désactivé")
 

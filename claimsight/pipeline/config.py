@@ -30,6 +30,10 @@ CONFIDENCE_WEIGHTS: dict[str, float] = {"view": 0.5, "damage": 0.5}
 #: a été fournie. 0.0 = désactivé; à calibrer sur les courbes de confiance.
 MIN_CONFIDENCE: dict[str, float] = {"view": 0.0, "damage": 0.0, "severity": 0.0}
 
+#: Seuil sigmoïde du modèle de couverture: au-delà, la face est considérée
+#: documentée. Plus il est haut, plus `missing_photos` est exigeant.
+COVERAGE_THRESHOLD = 0.5
+
 #: Distance de Hamming maximale entre deux dHash pour déclarer un doublon.
 DEDUP_HAMMING_THRESHOLD = 5
 
@@ -45,6 +49,7 @@ __all__ = [
     "DEFAULT_SEVERITY_CLASSES",
     "CONFIDENCE_WEIGHTS",
     "MIN_CONFIDENCE",
+    "COVERAGE_THRESHOLD",
     "DEDUP_HAMMING_THRESHOLD",
     "TOTAL_LOSS_SEVERE_IMAGES",
     "INFERENCE_BATCH_SIZE",

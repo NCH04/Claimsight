@@ -10,7 +10,7 @@ Ce module ne dépend que de la stdlib: il est importable sans torch.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 # ---------------------------------------------------------------------------
 # Vues (classification image-level)
@@ -47,6 +47,48 @@ VIEW_MIRROR_MAP: Mapping[str, str] = {
     "closeup": "closeup",
     "out_of_scope": "out_of_scope",
 }
+
+# ---------------------------------------------------------------------------
+# Couverture photo (multi-label)
+# ---------------------------------------------------------------------------
+
+#: Les quatre faces d'un véhicule qu'un dossier doit documenter.
+#: `detect_missing` ne raisonne que sur celles-ci: les dix VIEW_CLASSES s'y
+#: rabattaient déjà, une diagonale comptant pour deux faces. Les prédire
+#: directement, en multi-label, supprime cette indirection — et rend le
+#: problème plus facile à annoter comme à apprendre.
+COVERAGE_FACES: tuple[str, ...] = ("front", "rear", "left", "right")
+
+#: Faces couvertes par chacune des vues historiques. Sert à convertir un jeu
+#: d'annotations VIEW_CLASSES existant vers la tâche `coverage`.
+VIEW_TO_FACES: Mapping[str, tuple[str, ...]] = {
+    "front": ("front",),
+    "rear": ("rear",),
+    "left": ("left",),
+    "right": ("right",),
+    "front-left": ("front", "left"),
+    "front-right": ("front", "right"),
+    "rear-left": ("rear", "left"),
+    "rear-right": ("rear", "right"),
+    "closeup": (),
+    "out_of_scope": (),
+}
+
+#: Effet d'un flip horizontal sur un vecteur de couverture.
+FACE_MIRROR: Mapping[str, str] = {
+    "front": "front", "rear": "rear", "left": "right", "right": "left",
+}
+
+
+def faces_of_view(view: str) -> tuple[str, ...]:
+    """Faces documentées par une vue de l'ancienne taxonomie."""
+    return VIEW_TO_FACES.get(view, ())
+
+
+def mirror_faces(faces: Iterable[str]) -> tuple[str, ...]:
+    """Faces après flip horizontal (gauche et droite permutées)."""
+    return tuple(FACE_MIRROR.get(f, f) for f in faces)
+
 
 # ---------------------------------------------------------------------------
 # Dégâts

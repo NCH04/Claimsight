@@ -19,15 +19,16 @@ from ..domain.aggregation import (
     worst_finding,
 )
 from ..domain.dedup import find_duplicates, hash_images
-from ..domain.taxonomy import UNKNOWN
+from ..domain.taxonomy import COVERAGE_FACES, UNKNOWN
 from .config import (
     CONFIDENCE_WEIGHTS,
+    COVERAGE_THRESHOLD,
     DEDUP_HAMMING_THRESHOLD,
     INFERENCE_BATCH_SIZE,
     TOTAL_LOSS_SEVERE_IMAGES,
 )
 from .io_utils import list_images, load_image, save_json
-from .missing_photos import detect_missing
+from .missing_photos import detect_missing, missing_from_faces
 from .models import ModelBundle
 from .summary import make_summary
 
@@ -59,7 +60,8 @@ def _empty_result(t0: float, message: str, errors: list[str]) -> dict:
 def run_pipeline(
     images_dir: str,
     out_json: str | None = None,
-    view_checkpoint: str = "models/view.pt",
+    coverage_checkpoint: str | None = "models/coverage.pt",
+    view_checkpoint: str | None = "models/view.pt",
     damage_checkpoint: str | None = None,
     severity_checkpoint: str | None = None,
     bundle: ModelBundle | None = None,
@@ -92,9 +94,11 @@ def run_pipeline(
 
     try:
         if bundle is None:
-            LOGGER.info("Chargement des modèles (view=%s)", view_checkpoint)
+            LOGGER.info("Chargement des modèles (coverage=%s, view=%s)",
+                        coverage_checkpoint, view_checkpoint)
             bundle = ModelBundle.load(
-                view_checkpoint, damage_checkpoint, severity_checkpoint,
+                coverage_checkpoint, view_checkpoint,
+                damage_checkpoint, severity_checkpoint,
                 thresholds=thresholds,
             )
     except Exception as exc:
@@ -134,6 +138,10 @@ def run_pipeline(
         LOGGER.info("%d doublon(s) détecté(s) et exclus de l'agrégation", n_dupes)
 
     t_infer = time.time()
+    coverage_preds = (
+        bundle.coverage.predict_labels(images, COVERAGE_THRESHOLD, batch_size)
+        if bundle.coverage.available else [[] for _ in images]
+    )
     view_preds = bundle.view.predict_batch(images, batch_size)
     damage_preds = bundle.damage.predict_batch(images, batch_size)
     severity_preds = bundle.severity.predict_batch(images, batch_size)
@@ -149,12 +157,14 @@ def run_pipeline(
             "severity_prediction": severity.as_dict(),
             # `unknown` signifie ici « sous le seuil de confiance »: la photo
             # est exploitable mais son orientation n'est pas fiable.
+            "covered_faces": [f.label for f in faces],
             "quality_flag": "low_confidence" if view.label == UNKNOWN else "ok",
             "deduplicated": dup is not None,
             "duplicate_of": filenames[dup] if dup is not None else None,
         }
-        for name, view, damage, severity, dup in zip(
-            filenames, view_preds, damage_preds, severity_preds, duplicate_of, strict=True
+        for name, view, damage, severity, dup, faces in zip(
+            filenames, view_preds, damage_preds, severity_preds, duplicate_of,
+            coverage_preds, strict=True,
         )
     ]
 
@@ -171,8 +181,15 @@ def run_pipeline(
     agg_severity = aggregate_severity(findings)
     worst = worst_finding(findings)
 
-    # Une vue `unknown` (sous le seuil) ne compte pas comme couverture.
-    missing = detect_missing(p.label for p in unique_views)
+    # Le modèle de couverture prédit directement les faces: une photo en
+    # diagonale en documente deux, ce qu'une classe de vue exclusive rendait
+    # impossible à exprimer. À défaut, on retombe sur les vues.
+    if bundle.coverage.available:
+        covered = {f.label for i in keep for f in coverage_preds[i]}
+        missing = missing_from_faces(covered)
+    else:
+        covered = set()
+        missing = detect_missing(p.label for p in unique_views)
 
     legacy_views = [
         {"image": filenames[i], "view": view_preds[i].label, "confidence": view_preds[i].confidence}
@@ -188,9 +205,11 @@ def run_pipeline(
         "missing_photos": missing,
         "input_images": input_images,
         "suspected_total_loss": suspect_total_loss(findings, TOTAL_LOSS_SEVERE_IMAGES),
+        "covered_faces": sorted(covered, key=COVERAGE_FACES.index) if covered else [],
         "confidence": round(
             global_confidence(
-                [p.confidence for p in unique_views],
+                ([p.confidence for p in unique_views] if bundle.view.available
+                 else [max((f.confidence for f in coverage_preds[i]), default=0.0) for i in keep]),
                 agg_damage.confidence if bundle.damage.available else None,
                 CONFIDENCE_WEIGHTS,
             ),
@@ -227,7 +246,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--images_dir", required=True)
     ap.add_argument("--out_json", default="outputs/result.json")
-    ap.add_argument("--view_checkpoint", default="models/view.pt")
+    ap.add_argument("--coverage_checkpoint", default="models/coverage.pt",
+                    help="Modèle multi-label de couverture photo (alimente missing_photos)")
+    ap.add_argument("--view_checkpoint", default="models/view.pt",
+                    help="Modèle de vue (optionnel, descriptif)")
     ap.add_argument("--damage_checkpoint", default=None)
     ap.add_argument("--severity_checkpoint", default=None)
     ap.add_argument("--recursive", action="store_true")
@@ -258,6 +280,7 @@ def main(argv: list[str] | None = None) -> int:
     result = run_pipeline(
         images_dir=args.images_dir,
         out_json=args.out_json,
+        coverage_checkpoint=args.coverage_checkpoint,
         view_checkpoint=args.view_checkpoint,
         damage_checkpoint=args.damage_checkpoint,
         severity_checkpoint=args.severity_checkpoint,

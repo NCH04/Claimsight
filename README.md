@@ -82,17 +82,61 @@ Four design decisions carry the system:
 
 | Model | Task | Status |
 |---|---|---|
-| **Parts** | 15 vehicle parts, instance segmentation | 🟢 trained — mAP50 **0.754**, mAP50-95 **0.632** |
-| **View** | 10 camera orientations | 🟡 trainable — needs in-house annotations |
+| **Coverage** | 4 vehicle faces, **multi-label** | 🟢 trained — macro-F1 **0.969**, exact-match **0.927** |
+| **Parts** | 15 vehicle parts, instance segmentation | 🟢 trained — mAP50 **0.830** |
 | **Damage** | 7 damage types | 🟡 trainable — no licence-compatible dataset yet |
 | **Severity** | 4 ordinal levels | 🟡 trainable — no public source |
+| **View** | 10 camera orientations | ⚪ optional — superseded by Coverage for the product feature |
+
+### Why coverage is multi-label
+
+The shipped feature — telling an adjuster which angle is missing — only ever
+needed four answers: *is the front visible? the rear? the left? the right?*
+Ten mutually-exclusive view classes were an indirection: a `front-left` photo
+already counted as both front and left.
+
+Predicting the four faces independently is strictly better. **Two diagonal
+photos can cover all four faces**, which exclusive classes cannot express;
+annotation becomes ticking boxes instead of choosing among ten; and the rare
+diagonal classes stop starving the model.
+
+4-fold grouped cross-validation, per face:
+
+| | front | rear | left | right |
+|---|---|---|---|---|
+| **F1** | 0.983 | 0.958 | 0.967 | 0.969 |
+
+`left` and `right` hold up despite being only ~7% of the training labels —
+`pos_weight` in the BCE loss is what keeps the model from answering "absent"
+every time. Their higher fold-to-fold variance (±0.014, ±0.026 against ±0.004
+for `front`) is the honest signal that they rest on few examples.
+
+> **Read these numbers for what they are.** They measure agreement with labels
+> *derived from part annotations*, not with human ground truth. The model
+> reproduces that heuristic very well; how it behaves on real phone photos is
+> not yet measured.
+
+It also unlocked free training data. Part annotations reveal the camera angle —
+a photo labelling a front bumper and headlights shows the front — so
+`scripts/derive_coverage_labels.py` extracts **3,393 labelled images** from a
+CC BY 4.0 parts dataset without annotating anything by hand. That is weak
+supervision: an absent part does not prove an absent face, so it is a
+foundation, not a substitute for real annotations — particularly for the side
+faces, which are rare in public datasets.
 
 Adding a classifier is a `TaskConfig` entry in [`claimsight/training/tasks.py`](claimsight/training/tasks.py); the trainer is task-agnostic.
 
 ```bash
-claimsight-train --task view --csv_path dataset/labels.csv \
-                 --images_dir dataset/images --final_fit
+# Free labels derived from part annotations
+python scripts/derive_coverage_labels.py --dataset <parts_dataset> \
+       --out dataset/coverage_derived.csv
+claimsight-train --task coverage --csv_path dataset/coverage_derived.csv \
+                 --images_dir <images> --final_fit
 ```
+
+To add real annotations, `scripts/annotate_coverage.py` serves a keyboard-driven
+page — `1-4` toggle faces, `Enter` advances — at two to three seconds per image.
+It writes the CSV after every image and resumes where you stopped.
 
 The trainer splits **by vehicle** (`StratifiedGroupKFold`), selects the best epoch on a holdout carved out of the training fold, reports metrics from the best checkpoint, and `--final_fit` retrains on the full dataset to produce the deployable model. Cross-validation gives the estimate; the final fit gives the artefact.
 
@@ -139,11 +183,12 @@ Honest state of play — this is a working pipeline, not a finished product.
 
 | | |
 |---|---|
-| ✅ | View classification, photo-coverage detection, perceptual dedup, ordinal aggregation, confidence thresholds |
+| ✅ | Multi-label photo coverage, perceptual dedup, ordinal aggregation, confidence thresholds |
 | ✅ | Part detector trained and evaluated |
 | 🚧 | `damaged_parts[]` — the detector is trained but not yet wired into the pipeline output |
 | 🚧 | HTTP API (FastAPI) — currently a CLI; the model bundle is already built to load once at startup |
 | 🚧 | Damage and severity classifiers — blocked on licence-compatible training data |
+| 🚧 | Side-face coverage — derived labels cover only ~7% left/right; needs manual annotation |
 
 ```bash
 make test   # 32 tests, no GPU required

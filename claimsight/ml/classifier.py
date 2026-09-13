@@ -117,11 +117,49 @@ class ImageClassifier:
             out.extend(self._postprocess(row) for row in probs)
         return out
 
+    # -- multi-label ---------------------------------------------------------
+
+    @property
+    def multilabel(self) -> bool:
+        return bool(self.meta and self.meta.multilabel)
+
+    @torch.inference_mode()
+    def predict_labels(
+        self, images: Sequence[Image.Image], threshold: float = 0.5, batch_size: int = 16
+    ) -> list[list[Prediction]]:
+        """Classes présentes sur chaque image, pour un modèle multi-label.
+
+        Chaque classe est indépendante: on applique une sigmoïde par sortie et
+        on retient celles au-dessus du seuil. Une photo peut donc documenter
+        deux faces à la fois, ce qu'un argmax rendrait impossible.
+        """
+        if not self.available:
+            return [[] for _ in images]
+        if not self.multilabel:
+            raise ValueError(
+                f"predict_labels attend un checkpoint multi-label; "
+                f"{self.task!r} est mono-label. Utilisez predict()."
+            )
+        out: list[list[Prediction]] = []
+        for start in range(0, len(images), batch_size):
+            chunk = images[start : start + batch_size]
+            batch = torch.stack([self.transform(im) for im in chunk]).to(self.device)
+            probs = torch.sigmoid(self.model(batch))
+            for row in probs:
+                out.append([
+                    Prediction(cls, float(p))
+                    for cls, p in zip(self.meta.classes, row, strict=True)
+                    if float(p) >= threshold
+                ])
+        return out
+
     @torch.inference_mode()
     def predict_proba(self, image: Image.Image) -> dict:
         """Distribution complète — utile pour le debug et le calibrage des seuils."""
         if not self.available:
             return {}
         x = self.transform(image).unsqueeze(0).to(self.device)
-        probs = torch.softmax(self.model(x), dim=1)[0]
+        logits = self.model(x)
+        probs = (torch.sigmoid(logits)[0] if self.multilabel
+                 else torch.softmax(logits, dim=1)[0])
         return {c: float(p) for c, p in zip(self.meta.classes, probs, strict=True)}

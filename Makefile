@@ -1,8 +1,9 @@
-.PHONY: install install-cpu test lint pipeline sanity train-view train-damage train-severity train-parts yolo-config clean
+.PHONY: install install-cpu test lint pipeline sanity derive-coverage annotate train-coverage train-view train-damage train-severity train-parts yolo-config clean
 
 PY ?= python
 IMAGES ?= dataset/images_mapped
 CSV    ?= dataset/labels.csv
+PARTS_DATASET ?= ../datasets/carparts-seg
 
 install:                       ## Installe le projet + tous les extras
 	$(PY) -m pip install -e ".[all]"
@@ -17,7 +18,16 @@ test:                          ## Tests unitaires
 lint:                          ## Lint + tri des imports
 	$(PY) -m ruff check claimsight/ scripts/ tests/ sanity_check.py
 
-train-view:                    ## Entraîne le classifieur de vue
+derive-coverage:               ## Déduit des labels de couverture depuis un dataset de pièces
+	$(PY) scripts/derive_coverage_labels.py --dataset $(PARTS_DATASET) --out dataset/coverage_derived.csv
+
+annotate:                      ## Ouvre l'outil d'annotation clavier
+	$(PY) scripts/annotate_coverage.py --images_dir $(IMAGES)
+
+train-coverage:                ## Entraîne le modèle de couverture photo (multi-label)
+	$(PY) -m claimsight.training.train_classifier --task coverage --csv_path dataset/coverage_derived.csv --images_dir $(IMAGES) --final_fit
+
+train-view:                    ## Entraîne le classifieur de vue (optionnel)
 	$(PY) -m claimsight.training.train_classifier --task view --csv_path $(CSV) --images_dir $(IMAGES) --final_fit
 
 train-damage:                  ## Entraîne le classifieur de dégât

@@ -32,6 +32,10 @@ class CheckpointMeta:
     resize_mode: str = "center_crop"
     normalize: str = "imagenet"
     task: str = "unknown"
+    #: Multi-label (sigmoïde + seuil) plutôt que mono-label (softmax + argmax).
+    #: Sans cette information l'inférence servirait un modèle BCE comme un
+    #: modèle CrossEntropy et ne renverrait qu'une face sur deux.
+    multilabel: bool = False
     metrics: dict[str, float] = field(default_factory=dict)
     format_version: int = CHECKPOINT_FORMAT_VERSION
 
@@ -113,6 +117,7 @@ def load_checkpoint(path: str | Path) -> tuple[dict[str, Any], CheckpointMeta]:
         resize_mode=str(ckpt.get("resize_mode", "center_crop")),
         normalize=str(ckpt.get("normalize", "imagenet")),
         task=str(ckpt.get("task", "unknown")),
+        multilabel=bool(ckpt.get("multilabel", False)),
         metrics=dict(ckpt.get("metrics", {}) or {}),
         format_version=int(ckpt.get("format_version", 1)),
     )

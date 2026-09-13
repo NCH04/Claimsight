@@ -26,6 +26,10 @@ class ModelBundle:
     millisecondes.
     """
 
+    #: Multi-label, prédit directement les faces documentées par une photo.
+    #: C'est lui qui alimente `missing_photos`; le modèle de vue n'est plus
+    #: qu'un complément descriptif.
+    coverage: ImageClassifier
     view: ImageClassifier
     damage: ImageClassifier
     severity: ImageClassifier
@@ -33,18 +37,25 @@ class ModelBundle:
     @classmethod
     def load(
         cls,
-        view_checkpoint: str | Path,
+        coverage_checkpoint: str | Path | None = None,
+        view_checkpoint: str | Path | None = None,
         damage_checkpoint: str | Path | None = None,
         severity_checkpoint: str | Path | None = None,
         device: str | None = None,
         thresholds: dict | None = None,
     ) -> ModelBundle:
-        if not Path(view_checkpoint).exists():
+        has_coverage = coverage_checkpoint and Path(coverage_checkpoint).exists()
+        has_view = view_checkpoint and Path(view_checkpoint).exists()
+        if not (has_coverage or has_view):
             raise FileNotFoundError(
-                f"Checkpoint de vue introuvable: {view_checkpoint}\n"
-                "Entraînez-le avec:\n"
-                "  python -m claimsight.training.train_classifier --task view "
-                "--csv_path dataset/labels.csv --images_dir dataset/images_mapped --final_fit"
+                "Aucun modèle d'orientation disponible.\n"
+                f"  couverture : {coverage_checkpoint or '(non fourni)'}\n"
+                f"  vue        : {view_checkpoint or '(non fourni)'}\n"
+                "Entraînez au moins le modèle de couverture:\n"
+                "  python scripts/derive_coverage_labels.py --dataset <dataset_pièces> "
+                "--out dataset/coverage_derived.csv\n"
+                "  claimsight-train --task coverage --csv_path dataset/coverage_derived.csv "
+                "--images_dir <images> --final_fit"
             )
 
         # Sous le seuil, le classifieur renvoie `unknown` plutôt qu'une
@@ -52,6 +63,7 @@ class ModelBundle:
         # de compter comme couverture photo.
         limits = {**MIN_CONFIDENCE, **(thresholds or {})}
         bundle = cls(
+            coverage=ImageClassifier(coverage_checkpoint, device, 0.0, "coverage"),
             view=ImageClassifier(view_checkpoint, device, limits["view"], "view"),
             damage=ImageClassifier(damage_checkpoint, device, limits["damage"], "damage"),
             severity=ImageClassifier(severity_checkpoint, device, limits["severity"], "severity"),

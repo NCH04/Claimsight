@@ -1,5 +1,7 @@
 from collections.abc import Iterable
 
+from ..domain.taxonomy import COVERAGE_FACES
+
 FRONT = {"front", "front-left", "front-right"}
 REAR = {"rear", "rear-left", "rear-right"}
 LEFT = {"left", "front-left", "rear-left"}
@@ -20,3 +22,13 @@ def detect_missing(views: Iterable[str]) -> list[str]:
         missing.append("right")
     return missing
 
+
+
+def missing_from_faces(covered: Iterable[str]) -> list[str]:
+    """Faces non documentées, à partir d'un ensemble de faces couvertes.
+
+    Chemin direct utilisé quand le modèle de couverture (multi-label) est
+    disponible: il prédit déjà les faces, sans passer par les dix vues.
+    """
+    seen = set(covered)
+    return [face for face in COVERAGE_FACES if face not in seen]

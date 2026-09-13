@@ -18,7 +18,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from ..domain.taxonomy import (
+    COVERAGE_FACES,
     DAMAGE_CLASSES,
+    FACE_MIRROR,
     SEVERITY_CLASSES,
     VIEW_CLASSES,
     VIEW_MIRROR_MAP,
@@ -41,6 +43,9 @@ class TaskConfig:
     mirror_map: Mapping[str, str] | None = None
     #: La tâche est-elle ordinale (gravité) ? Active des métriques dédiées.
     ordinal: bool = False
+    #: Multi-label (plusieurs classes vraies simultanément) plutôt que
+    #: mono-label exclusif. Bascule la perte en BCE et la sortie en sigmoïde.
+    multilabel: bool = False
     default_backbone: str = "resnet34"
     default_img_size: int = 256
     default_resize_mode: str = "center_crop"
@@ -58,6 +63,18 @@ class TaskConfig:
 
 
 TASKS: dict[str, TaskConfig] = {
+    "coverage": TaskConfig(
+        name="coverage",
+        label_column="",  # multi-label: les classes SONT les colonnes du CSV
+        classes=COVERAGE_FACES,
+        multilabel=True,
+        mirror_map=FACE_MIRROR,
+        default_backbone="resnet34",
+        default_img_size=256,
+        # La couverture se lit sur le véhicule entier: ne rien rogner.
+        default_resize_mode="pad_square",
+        description="Faces du véhicule documentées par une photo (multi-label).",
+    ),
     "view": TaskConfig(
         name="view",
         label_column="view",

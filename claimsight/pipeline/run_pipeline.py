@@ -19,13 +19,18 @@ from ..domain.aggregation import (
     worst_finding,
 )
 from ..domain.dedup import find_duplicates, hash_images
+from ..domain.parts import PartObservation, aggregate_parts, structural_parts_damaged
+from ..domain.quality import measure as measure_quality
+from ..domain.quality import quality_flag
 from ..domain.taxonomy import COVERAGE_FACES, UNKNOWN
 from .config import (
     CONFIDENCE_WEIGHTS,
     COVERAGE_THRESHOLD,
     DEDUP_HAMMING_THRESHOLD,
     INFERENCE_BATCH_SIZE,
+    MIN_CONFIDENCE,
     TOTAL_LOSS_SEVERE_IMAGES,
+    TOTAL_LOSS_SEVERE_PARTS,
 )
 from .io_utils import list_images, load_image, save_json
 from .missing_photos import detect_missing, missing_from_faces
@@ -64,6 +69,7 @@ def run_pipeline(
     view_checkpoint: str | None = "models/view.pt",
     damage_checkpoint: str | None = None,
     severity_checkpoint: str | None = None,
+    parts_checkpoint: str | None = "models/parts.pt",
     bundle: ModelBundle | None = None,
     recursive: bool = False,
     batch_size: int = INFERENCE_BATCH_SIZE,
@@ -98,7 +104,7 @@ def run_pipeline(
                         coverage_checkpoint, view_checkpoint)
             bundle = ModelBundle.load(
                 coverage_checkpoint, view_checkpoint,
-                damage_checkpoint, severity_checkpoint,
+                damage_checkpoint, severity_checkpoint, parts_checkpoint,
                 thresholds=thresholds,
             )
     except Exception as exc:
@@ -132,6 +138,7 @@ def run_pipeline(
     # Déduplication AVANT agrégation: plusieurs prises du même angle ne
     # doivent ni peser plusieurs fois dans le constat, ni faire croire à une
     # couverture photo plus large qu'elle ne l'est.
+    qualities = [measure_quality(img) for img in images]
     duplicate_of = find_duplicates(hash_images(images), threshold=dedup_threshold)
     n_dupes = sum(1 for d in duplicate_of if d is not None)
     if n_dupes:
@@ -147,6 +154,10 @@ def run_pipeline(
     severity_preds = bundle.severity.predict_batch(images, batch_size)
     inference_ms = int((time.time() - t_infer) * 1000)
 
+    # Détection des pièces, puis lecture du dégât sur le DÉCOUPAGE de chaque
+    # pièce: c'est ce qui permet de dire « pare-chocs avant enfoncé » plutôt
+    # que « il y a un enfoncement quelque part ».
+    detections = bundle.parts.detect(images) if bundle.parts.available else [[] for _ in images]
     filenames = [p.name for p in kept_paths]
     input_images = [
         {
@@ -158,13 +169,20 @@ def run_pipeline(
             # `unknown` signifie ici « sous le seuil de confiance »: la photo
             # est exploitable mais son orientation n'est pas fiable.
             "covered_faces": [f.label for f in faces],
-            "quality_flag": "low_confidence" if view.label == UNKNOWN else "ok",
+            # Le flou et la sous-exposition priment sur une vue peu sûre:
+            # ce sont eux qui justifient de redemander la photo.
+            "quality_flag": quality_flag(
+                qual,
+                view.confidence if view.label != UNKNOWN else 0.0,
+                min_confidence=MIN_CONFIDENCE["view"],
+            ),
+            "quality": qual.as_dict(),
             "deduplicated": dup is not None,
             "duplicate_of": filenames[dup] if dup is not None else None,
         }
-        for name, view, damage, severity, dup, faces in zip(
+        for name, view, damage, severity, dup, faces, qual in zip(
             filenames, view_preds, damage_preds, severity_preds, duplicate_of,
-            coverage_preds, strict=True,
+            coverage_preds, qualities, strict=True,
         )
     ]
 
@@ -176,6 +194,27 @@ def run_pipeline(
         [severity_preds[i] for i in keep],
     )
     unique_views = [view_preds[i] for i in keep]
+
+    # Observations par pièce, limitées aux images non-doublons.
+    observations: list[PartObservation] = []
+    for i in keep:
+        faces = tuple(f.label for f in coverage_preds[i])
+        crops = [d.crop(images[i]) for d in detections[i]]
+        crop_damage = bundle.damage.predict_batch(crops, batch_size) if crops else []
+        crop_severity = bundle.severity.predict_batch(crops, batch_size) if crops else []
+        for det, dmg, sev in zip(detections[i], crop_damage, crop_severity, strict=True):
+            observations.append(PartObservation(
+                part=det.label, image=filenames[i],
+                detection_confidence=det.confidence,
+                damage=dmg, severity=sev, faces=faces,
+            ))
+
+    damaged_parts = aggregate_parts(observations)
+    raw_detections = [
+        {"image": filenames[i], "model": "yolo-parts-v1",
+         "objects": [d.as_dict() for d in detections[i]]}
+        for i in keep if detections[i]
+    ]
 
     agg_damage = aggregate_damage(findings)
     agg_severity = aggregate_severity(findings)
@@ -201,10 +240,14 @@ def run_pipeline(
         "status": "ok_with_warnings" if (errors or warnings) else "ok",
         "vehicle_id": None,
         "summary": make_summary(legacy_views, agg_damage.label, agg_severity.label),
-        "damaged_parts": [],
+        "damaged_parts": damaged_parts,
         "missing_photos": missing,
         "input_images": input_images,
-        "suspected_total_loss": suspect_total_loss(findings, TOTAL_LOSS_SEVERE_IMAGES),
+        "suspected_total_loss": (
+            structural_parts_damaged(damaged_parts) >= TOTAL_LOSS_SEVERE_PARTS
+            if bundle.parts.available
+            else suspect_total_loss(findings, TOTAL_LOSS_SEVERE_IMAGES)
+        ),
         "covered_faces": sorted(covered, key=COVERAGE_FACES.index) if covered else [],
         "confidence": round(
             global_confidence(
@@ -215,7 +258,7 @@ def run_pipeline(
             ),
             4,
         ),
-        "raw_detections": [],
+        "raw_detections": raw_detections,
         "errors": errors,
         "warnings": warnings,
         "processing_time_ms": int((time.time() - t0) * 1000),
@@ -252,6 +295,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Modèle de vue (optionnel, descriptif)")
     ap.add_argument("--damage_checkpoint", default=None)
     ap.add_argument("--severity_checkpoint", default=None)
+    ap.add_argument("--parts_checkpoint", default="models/parts.pt",
+                    help="Détecteur de pièces YOLO (alimente raw_detections et damaged_parts)")
     ap.add_argument("--recursive", action="store_true")
     ap.add_argument("--batch_size", type=int, default=INFERENCE_BATCH_SIZE)
     ap.add_argument("--min_view_confidence", type=float, default=None,
@@ -284,6 +329,7 @@ def main(argv: list[str] | None = None) -> int:
         view_checkpoint=args.view_checkpoint,
         damage_checkpoint=args.damage_checkpoint,
         severity_checkpoint=args.severity_checkpoint,
+        parts_checkpoint=args.parts_checkpoint,
         recursive=args.recursive,
         batch_size=args.batch_size,
         thresholds=thresholds or None,

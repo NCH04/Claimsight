@@ -113,7 +113,7 @@ class ImageClassifier:
         for start in range(0, len(images), batch_size):
             chunk = images[start : start + batch_size]
             batch = torch.stack([self.transform(im) for im in chunk]).to(self.device)
-            probs = torch.softmax(self.model(batch), dim=1)
+            probs = torch.softmax(self.model(batch) / self.temperature, dim=1)
             out.extend(self._postprocess(row) for row in probs)
         return out
 
@@ -122,6 +122,14 @@ class ImageClassifier:
     @property
     def multilabel(self) -> bool:
         return bool(self.meta and self.meta.multilabel)
+
+    @property
+    def temperature(self) -> float:
+        return self.meta.temperature if self.meta else 1.0
+
+    def threshold_for(self, cls: str, default: float) -> float:
+        """Seuil calibré de cette classe, ou le seuil uniforme à défaut."""
+        return self.meta.thresholds.get(cls, default) if self.meta else default
 
     @torch.inference_mode()
     def predict_labels(
@@ -144,12 +152,15 @@ class ImageClassifier:
         for start in range(0, len(images), batch_size):
             chunk = images[start : start + batch_size]
             batch = torch.stack([self.transform(im) for im in chunk]).to(self.device)
-            probs = torch.sigmoid(self.model(batch))
+            # La température calibre les probabilités; les seuils par classe
+            # tiennent compte du fait qu'une face rare gagne à être déclarée
+            # présente plus tôt qu'une face fréquente.
+            probs = torch.sigmoid(self.model(batch) / self.temperature)
             for row in probs:
                 out.append([
                     Prediction(cls, float(p))
                     for cls, p in zip(self.meta.classes, row, strict=True)
-                    if float(p) >= threshold
+                    if float(p) >= self.threshold_for(cls, threshold)
                 ])
         return out
 
@@ -159,7 +170,7 @@ class ImageClassifier:
         if not self.available:
             return {}
         x = self.transform(image).unsqueeze(0).to(self.device)
-        logits = self.model(x)
+        logits = self.model(x) / self.temperature
         probs = (torch.sigmoid(logits)[0] if self.multilabel
                  else torch.softmax(logits, dim=1)[0])
         return {c: float(p) for c, p in zip(self.meta.classes, probs, strict=True)}

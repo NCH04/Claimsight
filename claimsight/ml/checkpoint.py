@@ -36,6 +36,11 @@ class CheckpointMeta:
     #: Sans cette information l'inférence servirait un modèle BCE comme un
     #: modèle CrossEntropy et ne renverrait qu'une face sur deux.
     multilabel: bool = False
+    #: Température de calibration (voir claimsight/training/calibrate.py).
+    #: 1.0 = non calibré. >1 corrige une sur-confiance.
+    temperature: float = 1.0
+    #: Seuils par classe issus de la calibration; à défaut, un seuil uniforme.
+    thresholds: dict[str, float] = field(default_factory=dict)
     metrics: dict[str, float] = field(default_factory=dict)
     format_version: int = CHECKPOINT_FORMAT_VERSION
 
@@ -118,6 +123,8 @@ def load_checkpoint(path: str | Path) -> tuple[dict[str, Any], CheckpointMeta]:
         normalize=str(ckpt.get("normalize", "imagenet")),
         task=str(ckpt.get("task", "unknown")),
         multilabel=bool(ckpt.get("multilabel", False)),
+        temperature=float(ckpt.get("temperature", 1.0) or 1.0),
+        thresholds={str(k): float(v) for k, v in (ckpt.get("thresholds") or {}).items()},
         metrics=dict(ckpt.get("metrics", {}) or {}),
         format_version=int(ckpt.get("format_version", 1)),
     )

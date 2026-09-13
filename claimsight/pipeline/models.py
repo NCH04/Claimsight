@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..ml.classifier import ImageClassifier
-from .config import MIN_CONFIDENCE
+from ..ml.detector import PartDetector
+from .config import MIN_CONFIDENCE, PARTS_MIN_CONFIDENCE
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ class ModelBundle:
     view: ImageClassifier
     damage: ImageClassifier
     severity: ImageClassifier
+    #: Détecteur de pièces. Alimente `raw_detections` et, croisé avec le
+    #: classifieur de dégâts, `damaged_parts`.
+    parts: PartDetector
 
     @classmethod
     def load(
@@ -41,6 +45,7 @@ class ModelBundle:
         view_checkpoint: str | Path | None = None,
         damage_checkpoint: str | Path | None = None,
         severity_checkpoint: str | Path | None = None,
+        parts_checkpoint: str | Path | None = None,
         device: str | None = None,
         thresholds: dict | None = None,
     ) -> ModelBundle:
@@ -67,7 +72,13 @@ class ModelBundle:
             view=ImageClassifier(view_checkpoint, device, limits["view"], "view"),
             damage=ImageClassifier(damage_checkpoint, device, limits["damage"], "damage"),
             severity=ImageClassifier(severity_checkpoint, device, limits["severity"], "severity"),
+            parts=PartDetector(parts_checkpoint, device, PARTS_MIN_CONFIDENCE),
         )
+        if not bundle.parts.available:
+            LOGGER.warning(
+                "Détecteur de pièces indisponible -> `damaged_parts` et `raw_detections` "
+                "resteront vides. Entraînez-le avec: claimsight-train-parts"
+            )
         for name in ("damage", "severity"):
             if not getattr(bundle, name).available:
                 LOGGER.warning(

@@ -34,6 +34,14 @@ MIN_CONFIDENCE: dict[str, float] = {"view": 0.0, "damage": 0.0, "severity": 0.0}
 #: documentée. Plus il est haut, plus `missing_photos` est exigeant.
 COVERAGE_THRESHOLD = 0.5
 
+#: Confiance minimale d'une détection de pièce retenue.
+PARTS_MIN_CONFIDENCE = 0.40
+
+#: Nombre de PIÈCES gravement atteintes déclenchant la suspicion de perte
+#: totale. Plus défendable que le comptage d'images graves: c'est la pièce
+#: touchée qui détermine le coût de réparation.
+TOTAL_LOSS_SEVERE_PARTS = 3
+
 #: Distance de Hamming maximale entre deux dHash pour déclarer un doublon.
 DEDUP_HAMMING_THRESHOLD = 5
 
@@ -52,6 +60,8 @@ __all__ = [
     "COVERAGE_THRESHOLD",
     "DEDUP_HAMMING_THRESHOLD",
     "TOTAL_LOSS_SEVERE_IMAGES",
+    "TOTAL_LOSS_SEVERE_PARTS",
+    "PARTS_MIN_CONFIDENCE",
     "INFERENCE_BATCH_SIZE",
     "IMAGENET_MEAN",
     "IMAGENET_STD",

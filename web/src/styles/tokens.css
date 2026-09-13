@@ -1,0 +1,30 @@
+/* Système de tokens — « feuillet carbone » du constat amiable européen.
+   Toute couleur/typo de l'app dérive de ces variables. */
+
+:root {
+  /* Palette */
+  --papier: #f1f3f8;        /* fond général: papier carbone bleuté */
+  --papier-ombre: #e3e7f0;  /* fonds secondaires, survols */
+  --fiche: #ffffff;         /* surfaces de la fiche */
+  --bleu-constat: #22346e;  /* encre bleue: structure, actions, titres */
+  --bleu-tampon: #4059a8;   /* accents secondaires, focus, liens */
+  --bleu-voile: #d7def0;    /* remplissages légers (secteurs couverts, hover) */
+  --encre: #10141b;         /* texte principal */
+  --gris-releve: #5c6478;   /* labels secondaires, métadonnées */
+
+  /* Sévérité — seules couleurs vives de la fiche */
+  --sev-minor: #2e7d4f;
+  --sev-moderate: #d9a013;
+  --sev-severe: #c23b22;
+
+  /* Typographie */
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  /* Rythme */
+  --radius: 6px;
+  --border-encre: 1.5px solid var(--bleu-constat);
+  --border-fine: 1px solid #c6cee0;
+  --shadow-fiche: 0 1px 0 rgba(34, 52, 110, 0.16), 0 10px 28px rgba(34, 52, 110, 0.08);
+}

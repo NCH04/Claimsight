@@ -50,3 +50,7 @@ outputs_view/
 
 # --- Divers ---
 kaggle.json
+
+# --- Front ---
+node_modules/
+web/dist/

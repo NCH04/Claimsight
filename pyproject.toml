@@ -40,6 +40,12 @@ train = [
     "pandas>=2.0",
     "scikit-learn>=1.3",
 ]
+# API HTTP.
+api = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+]
 # Détection de pièces.
 yolo = [
     "ultralytics>=8.2",
@@ -52,15 +58,17 @@ label = [
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
+    "httpx>=0.27",
 ]
 all = [
-    "claimsight[train,yolo,label,dev]",
+    "claimsight[train,api,yolo,label,dev]",
 ]
 
 [project.scripts]
 claimsight = "claimsight.pipeline.run_pipeline:main"
 claimsight-train = "claimsight.training.train_classifier:main"
 claimsight-train-parts = "claimsight.training.train_parts_yolo:main"
+claimsight-serve = "claimsight.api.server:serve"
 
 [tool.setuptools.packages.find]
 include = ["claimsight*"]

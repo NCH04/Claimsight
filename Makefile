@@ -1,9 +1,10 @@
-.PHONY: install install-cpu test lint pipeline sanity derive-coverage annotate train-coverage train-view train-damage train-severity train-parts yolo-config clean
+.PHONY: install install-cpu test lint web-install web-dev web-build calibrate serve pipeline sanity derive-coverage annotate train-coverage train-view train-damage train-severity train-parts yolo-config clean
 
 PY ?= python
 IMAGES ?= dataset/images_mapped
 CSV    ?= dataset/labels.csv
 PARTS_DATASET ?= ../datasets/carparts-seg
+CKPT   ?= models/coverage.pt
 
 install:                       ## Installe le projet + tous les extras
 	$(PY) -m pip install -e ".[all]"
@@ -41,6 +42,21 @@ yolo-config:                   ## (Re)génère configs/parts_yolo.yaml depuis la
 
 train-parts: yolo-config       ## Entraîne le détecteur de pièces
 	$(PY) -m claimsight.training.train_parts_yolo
+
+web-install:                   ## Installe les dépendances du front
+	cd web && npm install
+
+web-dev:                       ## Front en développement (Vite :5173, proxy /api -> :8000)
+	cd web && npm run dev
+
+web-build:                     ## Construit le bundle servi par l'API
+	cd web && npm run build
+
+calibrate:                     ## Calibre un checkpoint (température + seuils par classe)
+	$(PY) -m claimsight.training.calibrate --checkpoint $(CKPT) --csv_path $(CSV) --images_dir $(IMAGES) --write
+
+serve:                         ## Lance l'API sur http://127.0.0.1:8000 (docs sur /docs)
+	$(PY) -m uvicorn claimsight.api.server:app --reload
 
 pipeline:                      ## Lance le pipeline sur $(IMAGES)
 	$(PY) -m claimsight.pipeline.run_pipeline --images_dir $(IMAGES) --view_checkpoint models/view.pt

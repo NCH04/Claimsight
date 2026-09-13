@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #F3F4F6; color: #1D1F23;
+           font-family: Manrope, "Helvetica Neue", Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #3979D4; text-decoration: none; } a:hover { color: #2A5DA8; }
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-variant-ligatures: none; }
+    .pill { border-radius: 980px; border: none; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 12px; padding: 8px 15px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #F3F4F6; display: flex; flex-direction: column;">
+  <div style="display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 0 24px 0 20px; background: rgba(255,255,255,.82); border-bottom: 1px solid #E4E6E9;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <svg width="18" height="18" viewBox="0 0 17 17" fill="none" stroke="#3979D4" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3.5 5.5 8.5l5 5"/></svg>
+      <span class="m" style="font-size: 13px; font-weight: 500;">IMG_0442.jpg</span>
+      <span style="font-size: 13px; color: #9C9EA4;">2 sur 6</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 9px;">
+      <button class="pill" style="background: #ECEDF0; color: #1D1F23;">Masquer les détections</button>
+      <button class="pill" style="background: #ECEDF0; color: #1D1F23;">Corriger la vue</button>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 372px; flex-grow: 1;">
+    <!-- visionneuse : seule surface sombre, la photo prime (déférence) -->
+    <div style="background: #16181C; display: flex; align-items: center; justify-content: center; padding: 36px; position: relative;">
+      <div style="position: relative; width: 764px; height: 574px; background: #24272C; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+        <svg width="600" height="280" viewBox="0 0 600 280" fill="none" stroke="#565B63" stroke-width="3">
+          <path d="M28 208h544M64 208c0-72 54-118 136-118h136c64 0 100 28 136 64l64 28v26"/>
+          <circle cx="164" cy="214" r="32"/><circle cx="446" cy="214" r="32"/><path d="M200 96h120l40 52H186l14-52Z"/>
+        </svg>
+        <div style="position: absolute; left: 72px; top: 302px; width: 200px; height: 130px; border: 2px solid #E0645E; border-radius: 6px;">
+          <span class="m" style="position: absolute; top: -25px; left: -2px; font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 980px; background: #E0645E; color: #16181C; white-space: nowrap;">front bumper · dent 0.88</span>
+        </div>
+        <div style="position: absolute; left: 298px; top: 270px; width: 118px; height: 74px; border: 2px solid #E0645E; border-radius: 6px;">
+          <span class="m" style="position: absolute; top: -25px; left: -2px; font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 980px; background: #E0645E; color: #16181C; white-space: nowrap;">headlights · crack 0.74</span>
+        </div>
+        <div style="position: absolute; left: 238px; top: 132px; width: 232px; height: 96px; border: 2px dashed #E5B455; border-radius: 6px;">
+          <span class="m" style="position: absolute; top: -25px; left: -2px; font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 980px; background: #E5B455; color: #16181C; white-space: nowrap;">hood · scratch 0.61</span>
+        </div>
+      </div>
+      <div style="position: absolute; left: 36px; bottom: 36px; display: flex; align-items: center; gap: 9px; padding: 8px 14px; border-radius: 980px; background: rgba(255,255,255,.1);">
+        <span class="m" style="font-size: 11px; font-weight: 600; color: #FFFFFF;">front</span>
+        <span class="m" style="font-size: 11px; color: #A8ADB5;">confiance 0.96</span>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; display: flex; flex-direction: column;">
+      <div style="padding: 24px 24px 20px; border-bottom: 1px solid #EFF0F2;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.045em; color: #9C9EA4; margin-bottom: 10px;">VUE DÉTECTÉE</div>
+        <div style="display: flex; align-items: baseline; gap: 11px;">
+          <span class="m" style="font-size: 26px; font-weight: 600; letter-spacing: -0.02em;">front</span>
+          <span class="m" style="font-size: 13px; color: #9C9EA4;">0.96</span>
+        </div>
+        <div style="margin-top: 12px; height: 4px; background: #ECEDF0; border-radius: 980px;">
+          <div style="height: 4px; width: 96%; background: #3979D4; border-radius: 980px;"></div>
+        </div>
+      </div>
+      <div style="padding: 20px 24px; border-bottom: 1px solid #EFF0F2;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.045em; color: #9C9EA4; margin-bottom: 13px;">DÉTECTIONS · 3</div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 11px;">
+            <span style="width: 10px; height: 10px; border-radius: 3px; background: #C54D47; flex-shrink: 0;"></span>
+            <span style="font-size: 14px; flex-grow: 1;">Pare-chocs avant</span><span class="m" style="font-size: 12px; color: #7D8086;">0.88</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 11px;">
+            <span style="width: 10px; height: 10px; border-radius: 3px; background: #C54D47; flex-shrink: 0;"></span>
+            <span style="font-size: 14px; flex-grow: 1;">Optique avant droite</span><span class="m" style="font-size: 12px; color: #7D8086;">0.74</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 11px;">
+            <span style="width: 10px; height: 10px; border-radius: 3px; background: #A87100; flex-shrink: 0;"></span>
+            <span style="font-size: 14px; flex-grow: 1;">Capot</span><span class="m" style="font-size: 12px; color: #7D8086;">0.61</span>
+          </div>
+        </div>
+      </div>
+      <div style="padding: 20px 24px;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.045em; color: #9C9EA4; margin-bottom: 12px;">MÉTADONNÉES</div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between;"><span style="font-size: 13px; color: #585B61;">Résolution</span><span class="m" style="font-size: 13px;">4032 × 3024</span></div>
+          <div style="display: flex; justify-content: space-between;"><span style="font-size: 13px; color: #585B61;">Orientation EXIF</span><span class="m" style="font-size: 13px;">corrigée</span></div>
+          <div style="display: flex; justify-content: space-between;"><span style="font-size: 13px; color: #585B61;">Qualité</span><span class="m" style="font-size: 13px;">ok</span></div>
+          <div style="display: flex; justify-content: space-between;"><span style="font-size: 13px; color: #585B61;">Doublon</span><span class="m" style="font-size: 13px;">non</span></div>
+        </div>
+      </div>
+      <div style="padding: 18px 24px; margin-top: auto; background: #F9FAFB; border-top: 1px solid #EFF0F2;">
+        <div style="font-size: 12px; color: #7D8086; line-height: 1.55;">Une correction manuelle de la vue est tracée dans le dossier et n'altère pas les prédictions déjà validées.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

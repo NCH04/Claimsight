@@ -1,6 +1,6 @@
 # GÉNÉRÉ PAR scripts/build_yolo_config.py — NE PAS ÉDITER À LA MAIN.
 # Source de vérité: claimsight/domain/taxonomy.py::PART_CLASSES
-path: dataset/parts_yolo
+path: /home/nch/hackaton_project/datasets/claimsight-parts
 train: images/train
 val: images/val
 

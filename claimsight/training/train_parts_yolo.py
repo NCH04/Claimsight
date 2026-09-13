@@ -59,6 +59,11 @@ def main(argv=None) -> None:
     LOGGER.info("Dataset : %s", data_path)
     LOGGER.info("Modèle  : %s | epochs=%d imgsz=%d", args.model, args.epochs, args.imgsz)
 
+    # Ultralytics résout un `project` RELATIF sous son propre `runs_dir`, ce qui
+    # enterre la sortie dans runs/segment/<project>/. On impose donc un chemin
+    # absolu pour que --project désigne bien le dossier demandé.
+    project = Path(args.project).resolve()
+
     model = YOLO(args.model)
     model.train(
         data=str(data_path),
@@ -66,7 +71,7 @@ def main(argv=None) -> None:
         imgsz=args.imgsz,
         batch=args.batch,
         device=args.device,
-        project=args.project,
+        project=str(project),
         name=args.name,
         seed=args.seed,
         patience=args.patience,
@@ -74,7 +79,7 @@ def main(argv=None) -> None:
     )
     metrics = model.val()
     LOGGER.info("mAP50-95=%.4f | mAP50=%.4f", metrics.box.map, metrics.box.map50)
-    LOGGER.info("Poids -> %s/%s/weights/best.pt", args.project, args.name)
+    LOGGER.info("Poids -> %s", project / args.name / "weights" / "best.pt")
 
 
 if __name__ == "__main__":

@@ -111,3 +111,48 @@ Example (conceptual):
     }
   ]
 }
+```
+
+---
+
+## 5. Source of truth
+
+This document is prose; the code governs. Every list above is defined in
+`claimsight/domain/taxonomy.py`:
+
+| Concept  | Constant          | Count |
+|----------|-------------------|-------|
+| Views    | `VIEW_CLASSES`    | 10    |
+| Damages  | `DAMAGE_LABELS`   | 6     |
+| Severity | `SEVERITY_CLASSES`| 4     |
+| Parts    | `PART_CLASSES`    | 15    |
+
+Never redefine a class list anywhere else. Doing so is what previously let this
+document and the dataset scripts drift apart (15 parts here, 17 in the code).
+
+`unknown` is not in any list: it is the abstention value returned when a model
+is unavailable or its confidence falls under the configured threshold.
+
+---
+
+## 6. Mapping public datasets
+
+Public datasets rarely use our vocabulary, so each source gets an explicit
+mapping file under `configs/`, keyed by the source's own class ids:
+
+- `configs/source_part_ids_carparts_seg.json` — Carparts Segmentation
+  (Ultralytics, CC BY 4.0). Covers 11 of our 15 parts; the four `fender`
+  classes have no equivalent and stay unlabelled until annotated in-house.
+
+Rules for a mapping file:
+
+1. Every target name must exist in `PART_CLASSES`, or in `EXCLUDED_PARTS_V1`
+   to be dropped on purpose rather than silently.
+2. Several source classes may collapse into one target (`front_left_light`,
+   `front_right_light` and `front_light` all become `headlights`).
+3. Apply it with `scripts/remap_yolo_parts.py`, which reads the source
+   read-only, writes elsewhere, and reports every box it dropped and why.
+   Run it with `--dry_run` first.
+4. Record the source's licence in the file's `_source` block — it decides
+   what may be redistributed. See `dataset/README.md`.
+

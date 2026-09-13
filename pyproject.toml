@@ -8,6 +8,18 @@ version = "0.2.0"
 description = "Automated vehicle damage assessment from claim photos: view classification, damage and severity grading, part detection."
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Nabil Chartouni" }]
+keywords = ["computer-vision", "pytorch", "yolo", "insurance", "claims", "damage-detection"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
 
 # Dépendances du coeur: inférence + pipeline.
 dependencies = [
@@ -16,6 +28,11 @@ dependencies = [
     "pillow>=10.0",
     "numpy>=1.26",
 ]
+
+[project.urls]
+Homepage = "https://github.com/NCH04/Claimsight"
+Repository = "https://github.com/NCH04/Claimsight"
+Issues = "https://github.com/NCH04/Claimsight/issues"
 
 [project.optional-dependencies]
 # Entraînement des classifieurs (view / damage / severity).

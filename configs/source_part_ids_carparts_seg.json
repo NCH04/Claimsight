@@ -1,0 +1,30 @@
+{
+  "_comment": "Mapping id_source -> nom de pièce, pour le dataset Carparts Segmentation (Ultralytics, CC BY 4.0, https://docs.ultralytics.com/datasets/segment/carparts-seg/). Les noms doivent figurer dans claimsight/domain/taxonomy.py::PART_CLASSES, ou dans EXCLUDED_PARTS_V1 pour être ignorés explicitement.",
+  "_source": {
+    "name": "Carparts Segmentation",
+    "license": "CC BY 4.0",
+    "url": "https://docs.ultralytics.com/datasets/segment/carparts-seg/",
+    "images": 3833,
+    "note": "Ne couvre pas les 4 classes d'ailes (fender) de la taxonomie V1."
+  },
+  "mapping": {
+    "0": "rear bumper",
+    "2": "rear windshield",
+    "3": "rear left door",
+    "4": "taillights",
+    "5": "taillights",
+    "6": "rear right door",
+    "7": "taillights",
+    "8": "front bumper",
+    "10": "windshield",
+    "11": "front left door",
+    "12": "headlights",
+    "13": "headlights",
+    "14": "front right door",
+    "15": "headlights",
+    "16": "hood",
+    "20": "trunk",
+    "21": "trunk",
+    "22": "wheel/rim"
+  }
+}

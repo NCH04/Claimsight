@@ -1,0 +1,296 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    /* Principes repris au HIG : déférence (la donnée prime sur le châssis),
+       clarté (hiérarchie typographique serrée), profondeur (élévation douce
+       plutôt que filets durs). Palette froide calculée en oklch ; les deux
+       accents partagent L=0.58 et C=0.155. */
+    body { margin: 0; background: #F3F4F6; color: #1D1F23;
+           font-family: Manrope, "Helvetica Neue", Helvetica, sans-serif;
+           -webkit-font-smoothing: antialiased; }
+    a { color: #3979D4; text-decoration: none; }
+    a:hover { color: #2A5DA8; }
+    /* Le monospace n'est pas décoratif : il signale une valeur PRODUITE PAR LE
+       MODÈLE, par opposition au texte d'interface rédigé par un humain. */
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-variant-ligatures: none; }
+    .card { background: #FFFFFF; border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(29,31,35,.05), 0 6px 16px rgba(29,31,35,.04); }
+    .pill { border-radius: 980px; border: none; cursor: pointer;
+            font-family: inherit; font-weight: 600; font-size: 13px; padding: 9px 18px; }
+    .row { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) 88px 132px;
+           align-items: center; padding: 16px 24px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; min-height: 1320px; background: #F3F4F6; display: flex; flex-direction: column;">
+
+  <!-- ══ barre d'en-tête : hairline unique, pas d'ombre ══ -->
+  <div style="display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 0 36px; background: rgba(255,255,255,.82); border-bottom: 1px solid #E4E6E9;">
+    <div style="display: flex; align-items: center; gap: 24px;">
+      <div style="display: flex; align-items: center; gap: 9px;">
+        <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#1D1F23" stroke-width="1.7" stroke-linecap="round">
+          <path d="M1.8 10s3-5.4 8.2-5.4S18.2 10 18.2 10s-3 5.4-8.2 5.4S1.8 10 1.8 10Z"/><circle cx="10" cy="10" r="2.3"/>
+        </svg>
+        <span style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">ClaimSight</span>
+      </div>
+      <span class="m" style="font-size: 13px; color: #7D8086;">SIN-2026-0914-0427</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 980px; background: #FFEBE8;">
+        <span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}; display: block;"></span>
+        <span class="m" style="font-size: 11px; font-weight: 600; color: {{accent}};">1 avertissement</span>
+      </div>
+      <button class="pill" style="background: #ECEDF0; color: #1D1F23;">Exporter</button>
+      <button class="pill" style="background: #3979D4; color: #FFFFFF;">Valider le constat</button>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; padding: 32px 36px 44px;">
+
+    <!-- ─── colonne principale ─── -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+
+      <!-- constat : typographie large, tracking négatif, aucun cadre -->
+      <div style="padding: 4px 4px 0;">
+        <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: #7D8086; margin-bottom: 10px;">CONSTAT AUTOMATIQUE</div>
+        <div style="font-size: 38px; font-weight: 700; line-height: 1.14; letter-spacing: -0.028em; text-wrap: pretty; max-width: 820px; margin-bottom: 18px;">
+          Enfoncement modéré du pare-chocs avant, avec optique droite fissurée.
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 7px;">
+          <div style="display: flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 980px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(29,31,35,.06);">
+            <span style="font-size: 12px; color: #7D8086;">dégât</span><span class="m" style="font-size: 12px; font-weight: 600;">dent</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 980px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(29,31,35,.06);">
+            <span style="font-size: 12px; color: #7D8086;">gravité</span><span class="m" style="font-size: 12px; font-weight: 600;">moderate</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 980px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(29,31,35,.06);">
+            <span style="font-size: 12px; color: #7D8086;">confiance</span><span class="m" style="font-size: 12px; font-weight: 600;">0.8412</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 980px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(29,31,35,.06);">
+            <span style="font-size: 12px; color: #7D8086;">pièce à conviction</span><span class="m" style="font-size: 12px; font-weight: 600;">IMG_0442.jpg</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- alerte : teinte pleine douce, pas de bandeau à filet -->
+      <div class="card" style="background: #FFEBE8; box-shadow: none; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 22px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="{{accent}}" stroke-width="1.7" stroke-linecap="round">
+            <circle cx="11" cy="11" r="8.6"/><path d="M11 6.8v5"/><circle cx="11" cy="15.2" r="0.9" fill="{{accent}}" stroke="none"/>
+          </svg>
+          <div>
+            <div style="font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 2px;">Couverture photo incomplète</div>
+            <div style="font-size: 13px; color: #585B61;">Le flanc droit n'est documenté par aucune vue exploitable.</div>
+          </div>
+        </div>
+        <button class="pill" style="background: {{accent}}; color: #FFFFFF; white-space: nowrap;">Demander la photo</button>
+      </div>
+
+      <!-- pièces endommagées : liste groupée, séparateurs en retrait -->
+      <div class="card">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 20px 24px 14px;">
+          <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.015em;">Pièces endommagées</div>
+          <div class="m" style="font-size: 12px; color: #9C9EA4;">3 / 15 au référentiel</div>
+        </div>
+        <div class="row" style="padding-top: 0; padding-bottom: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.045em; color: #9C9EA4;">
+          <div>PIÈCE</div><div>DÉGÂT</div><div>GRAVITÉ</div><div style="text-align: right;">CONF.</div><div style="text-align: right;">VUES</div>
+        </div>
+        <div class="row" style="border-top: 1px solid #EFF0F2;">
+          <div style="font-size: 15px; font-weight: 500;">Pare-chocs avant</div>
+          <div class="m" style="font-size: 13px; color: #585B61;">dent</div>
+          <div style="display: flex;"><span class="m" style="font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 980px; background: #FFEBE8; color: #C54D47;">moderate</span></div>
+          <div class="m" style="font-size: 13px; text-align: right;">0.88</div>
+          <div class="m" style="font-size: 11px; color: #7D8086; text-align: right;">front · front-left</div>
+        </div>
+        <div class="row" style="border-top: 1px solid #EFF0F2;">
+          <div style="font-size: 15px; font-weight: 500;">Optique avant droite</div>
+          <div class="m" style="font-size: 13px; color: #585B61;">crack</div>
+          <div style="display: flex;"><span class="m" style="font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 980px; background: #FFEBE8; color: #C54D47;">moderate</span></div>
+          <div class="m" style="font-size: 13px; text-align: right;">0.74</div>
+          <div class="m" style="font-size: 11px; color: #7D8086; text-align: right;">front</div>
+        </div>
+        <div class="row" style="border-top: 1px solid #EFF0F2; padding-bottom: 20px;">
+          <div style="font-size: 15px; font-weight: 500;">Capot</div>
+          <div class="m" style="font-size: 13px; color: #585B61;">scratch</div>
+          <div style="display: flex;"><span class="m" style="font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 980px; background: #FDF1DC; color: #A87100;">minor</span></div>
+          <div class="m" style="font-size: 13px; text-align: right;">0.61</div>
+          <div class="m" style="font-size: 11px; color: #7D8086; text-align: right;">front · front-left</div>
+        </div>
+      </div>
+
+      <!-- pièces photographiques -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px;">
+          <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.015em;">Pièces photographiques</div>
+          <div class="m" style="font-size: 12px; color: #9C9EA4;">6 reçues · 1 doublon écarté</div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+
+          <div class="card" style="overflow: hidden;">
+            <div style="height: 152px; background: #E9EBEE; display: flex; align-items: center; justify-content: center; position: relative;">
+              <svg width="132" height="60" viewBox="0 0 132 60" fill="none" stroke="#B5B8BE" stroke-width="2">
+                <path d="M6 44h120M14 44c0-16 12-26 30-26h30c14 0 22 6 30 14l14 6v6"/><circle cx="36" cy="46" r="7"/><circle cx="98" cy="46" r="7"/>
+              </svg>
+              <span class="m" style="position: absolute; top: 11px; left: 11px; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 980px; background: rgba(29,31,35,.82); color: #FFFFFF;">front</span>
+              <span class="m" style="position: absolute; top: 11px; right: 11px; font-size: 10px; font-weight: 500; padding: 4px 8px; border-radius: 980px; background: rgba(255,255,255,.85); color: #585B61;">0.96</span>
+            </div>
+            <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span class="m" style="font-size: 11px; color: #7D8086; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">IMG_0442.jpg</span>
+              <span class="m" style="font-size: 10px; font-weight: 600; color: #C54D47;">dent</span>
+            </div>
+          </div>
+
+          <div class="card" style="overflow: hidden;">
+            <div style="height: 152px; background: #E9EBEE; display: flex; align-items: center; justify-content: center; position: relative;">
+              <svg width="132" height="60" viewBox="0 0 132 60" fill="none" stroke="#B5B8BE" stroke-width="2">
+                <path d="M6 44h120M14 44c0-16 12-26 30-26h30c14 0 22 6 30 14l14 6v6"/><circle cx="36" cy="46" r="7"/><circle cx="98" cy="46" r="7"/>
+              </svg>
+              <span class="m" style="position: absolute; top: 11px; left: 11px; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 980px; background: rgba(29,31,35,.82); color: #FFFFFF;">front-left</span>
+              <span class="m" style="position: absolute; top: 11px; right: 11px; font-size: 10px; font-weight: 500; padding: 4px 8px; border-radius: 980px; background: rgba(255,255,255,.85); color: #585B61;">0.91</span>
+            </div>
+            <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span class="m" style="font-size: 11px; color: #7D8086; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">IMG_0443.jpg</span>
+              <span class="m" style="font-size: 10px; font-weight: 600; color: #A87100;">scratch</span>
+            </div>
+          </div>
+
+          <div class="card" style="overflow: hidden;">
+            <div style="height: 152px; background: #E9EBEE; display: flex; align-items: center; justify-content: center; position: relative;">
+              <svg width="132" height="60" viewBox="0 0 132 60" fill="none" stroke="#B5B8BE" stroke-width="2">
+                <path d="M6 44h120M14 44c0-16 12-26 30-26h30c14 0 22 6 30 14l14 6v6"/><circle cx="36" cy="46" r="7"/><circle cx="98" cy="46" r="7"/>
+              </svg>
+              <span class="m" style="position: absolute; top: 11px; left: 11px; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 980px; background: rgba(29,31,35,.82); color: #FFFFFF;">left</span>
+              <span class="m" style="position: absolute; top: 11px; right: 11px; font-size: 10px; font-weight: 500; padding: 4px 8px; border-radius: 980px; background: rgba(255,255,255,.85); color: #585B61;">0.89</span>
+            </div>
+            <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span class="m" style="font-size: 11px; color: #7D8086; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">IMG_0444.jpg</span>
+              <span class="m" style="font-size: 10px; color: #9C9EA4;">none</span>
+            </div>
+          </div>
+
+          <div class="card" style="overflow: hidden;">
+            <div style="height: 152px; background: #E9EBEE; display: flex; align-items: center; justify-content: center; position: relative;">
+              <svg width="132" height="60" viewBox="0 0 132 60" fill="none" stroke="#B5B8BE" stroke-width="2">
+                <path d="M6 44h120M14 44c0-16 12-26 30-26h30c14 0 22 6 30 14l14 6v6"/><circle cx="36" cy="46" r="7"/><circle cx="98" cy="46" r="7"/>
+              </svg>
+              <span class="m" style="position: absolute; top: 11px; left: 11px; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 980px; background: rgba(29,31,35,.82); color: #FFFFFF;">rear-left</span>
+              <span class="m" style="position: absolute; top: 11px; right: 11px; font-size: 10px; font-weight: 500; padding: 4px 8px; border-radius: 980px; background: rgba(255,255,255,.85); color: #585B61;">0.83</span>
+            </div>
+            <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span class="m" style="font-size: 11px; color: #7D8086; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">IMG_0445.jpg</span>
+              <span class="m" style="font-size: 10px; color: #9C9EA4;">none</span>
+            </div>
+          </div>
+
+          <div class="card" style="overflow: hidden; background: #F9FAFB; box-shadow: none;">
+            <div style="height: 152px; background: #EDEFF2; display: flex; align-items: center; justify-content: center; opacity: .42;">
+              <svg width="132" height="60" viewBox="0 0 132 60" fill="none" stroke="#B5B8BE" stroke-width="2">
+                <path d="M6 44h120M14 44c0-16 12-26 30-26h30c14 0 22 6 30 14l14 6v6"/><circle cx="36" cy="46" r="7"/><circle cx="98" cy="46" r="7"/>
+              </svg>
+            </div>
+            <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span class="m" style="font-size: 11px; color: #9C9EA4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">IMG_0446.jpg</span>
+              <span class="m" style="font-size: 10px; color: #9C9EA4;">doublon</span>
+            </div>
+          </div>
+
+          <div class="card" style="overflow: hidden;">
+            <div style="height: 152px; background: #E9EBEE; display: flex; align-items: center; justify-content: center; position: relative;">
+              <svg width="132" height="60" viewBox="0 0 132 60" fill="none" stroke="#B5B8BE" stroke-width="2">
+                <path d="M6 44h120M14 44c0-16 12-26 30-26h30c14 0 22 6 30 14l14 6v6"/><circle cx="36" cy="46" r="7"/><circle cx="98" cy="46" r="7"/>
+              </svg>
+              <span class="m" style="position: absolute; top: 11px; left: 11px; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 980px; background: rgba(255,255,255,.9); color: #9C9EA4;">unknown</span>
+              <span class="m" style="position: absolute; top: 11px; right: 11px; font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 980px; background: #FFEBE8; color: #C54D47;">0.18</span>
+            </div>
+            <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span class="m" style="font-size: 11px; color: #7D8086; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">IMG_0447.jpg</span>
+              <span class="m" style="font-size: 10px; font-weight: 600; color: #C54D47;">peu fiable</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── colonne latérale ─── -->
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+      <div class="card" style="padding: 22px;">
+        <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 3px;">Couverture du véhicule</div>
+        <div style="font-size: 13px; color: #7D8086; margin-bottom: 14px;">Une face couverte par au moins une vue exploitable.</div>
+        <div style="display: flex; justify-content: center; padding: 2px 0 16px;">
+          <svg width="244" height="258" viewBox="0 0 250 264" fill="none">
+            <path d="M70 6h110a8 8 0 0 1 7.6 10.5l-8 24A8 8 0 0 1 172 46H78a8 8 0 0 1-7.6-5.5l-8-24A8 8 0 0 1 70 6Z" fill="#E7F1FF"/>
+            <text x="125" y="31" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="#3979D4">front</text>
+            <path d="M78 218h94a8 8 0 0 1 7.6 10.5l-8 24a8 8 0 0 1-7.6 5.5H84a8 8 0 0 1-7.6-5.5l-8-24A8 8 0 0 1 78 218Z" fill="#E7F1FF" transform="rotate(180 125 240)"/>
+            <text x="125" y="244" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="#3979D4">rear</text>
+            <rect x="6" y="74" width="40" height="116" rx="12" fill="#E7F1FF"/>
+            <text x="26" y="137" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="#3979D4" transform="rotate(-90 26 137)">left</text>
+            <rect x="204" y="74" width="40" height="116" rx="12" fill="#FFEBE8" stroke="#C54D47" stroke-width="1.5" stroke-dasharray="4 4"/>
+            <text x="224" y="137" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="#C54D47" transform="rotate(90 224 137)">right</text>
+            <path d="M84 62h82a16 16 0 0 1 16 16v108a16 16 0 0 1-16 16H84a16 16 0 0 1-16-16V78a16 16 0 0 1 16-16Z" fill="#EDEFF2"/>
+            <path d="M92 84h66l-7 22H99l-7-22Z" fill="#DEE1E6"/>
+            <path d="M99 168h52l6 20H93l6-20Z" fill="#DEE1E6"/>
+            <rect x="96" y="116" width="58" height="42" rx="7" fill="#DEE1E6"/>
+          </svg>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; padding: 12px 15px; border-radius: 10px; background: #FFEBE8;">
+          <span class="m" style="font-size: 12px; font-weight: 600; color: {{accent}};">1 face manquante</span>
+          <span style="font-size: 13px; color: #585B61;">— flanc droit</span>
+        </div>
+      </div>
+
+      <div class="card" style="padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+        <div>
+          <div style="font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 2px;">Suspicion de perte totale</div>
+          <div class="m" style="font-size: 12px; color: #9C9EA4;">1 vue severe / seuil 3</div>
+        </div>
+        <span class="m" style="font-size: 12px; font-weight: 600; padding: 5px 13px; border-radius: 980px; background: #ECEDF0; color: #585B61;">non</span>
+      </div>
+
+      <div class="card" style="padding: 20px 22px 8px;">
+        <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 6px;">Journal d'analyse</div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #EFF0F2;">
+          <span style="font-size: 13px; color: #585B61;">Version du pipeline</span><span class="m" style="font-size: 13px;">v1</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #EFF0F2;">
+          <span style="font-size: 13px; color: #585B61;">Images analysées</span><span class="m" style="font-size: 13px;">6</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #EFF0F2;">
+          <span style="font-size: 13px; color: #585B61;">Doublons écartés</span><span class="m" style="font-size: 13px;">1</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #EFF0F2;">
+          <span style="font-size: 13px; color: #585B61;">Inférence</span><span class="m" style="font-size: 13px;">308 ms</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0;">
+          <span style="font-size: 13px; color: #585B61;">Total</span><span class="m" style="font-size: 13px;">515 ms</span></div>
+      </div>
+
+      <div style="padding: 4px 8px;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.045em; color: #9C9EA4; margin-bottom: 10px;">AVERTISSEMENTS</div>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <div style="font-size: 12px; color: #7D8086; line-height: 1.5;">Le modèle de gravité n'est pas entraîné : les valeurs proviennent du classifieur de dégâts seul.</div>
+          <div style="font-size: 12px; color: #7D8086; line-height: 1.5;">1 vue sous le seuil de confiance, exclue du calcul de couverture.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#C54D47","options":["#C54D47","#3979D4","#A87100","#1D1F23"],"section":"Thème"}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // Unique levier transverse : la couleur d'alerte, présente sur le bandeau,
+    // la rosace de couverture et le statut d'en-tête.
+    return { accent: this.props.accent ?? '#C54D47' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #F3F4F6; color: #1D1F23;
+           font-family: Manrope, "Helvetica Neue", Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #3979D4; text-decoration: none; } a:hover { color: #2A5DA8; }
+    .m { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-variant-ligatures: none; }
+    .card { background: #FFFFFF; border-radius: 14px; box-shadow: 0 1px 2px rgba(29,31,35,.05), 0 6px 16px rgba(29,31,35,.04); }
+    .pill { border-radius: 980px; border: none; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 13px; padding: 9px 18px; }
+    .bar { display: flex; align-items: center; gap: 9px; height: 60px; padding: 0 36px; background: rgba(255,255,255,.82); border-bottom: 1px solid #E4E6E9; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #F3F4F6; display: flex; flex-direction: column;">
+  <div class="bar">
+    <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#1D1F23" stroke-width="1.7" stroke-linecap="round">
+      <path d="M1.8 10s3-5.4 8.2-5.4S18.2 10 18.2 10s-3 5.4-8.2 5.4S1.8 10 1.8 10Z"/><circle cx="10" cy="10" r="2.3"/></svg>
+    <span style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">ClaimSight</span>
+  </div>
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 364px; gap: 36px; padding: 52px 36px; flex-grow: 1;">
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <div style="padding: 0 4px;">
+        <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: #7D8086; margin-bottom: 10px;">NOUVEAU DOSSIER</div>
+        <div style="font-size: 42px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 12px;">Déposez les photos du sinistre</div>
+        <div style="font-size: 16px; color: #585B61; max-width: 640px; line-height: 1.5; text-wrap: pretty;">
+          Six vues suffisent : les quatre faces et deux diagonales. ClaimSight identifie l'orientation de chaque cliché et signale les faces qu'il vous manque.
+        </div>
+      </div>
+      <div class="card" style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; border: 2px dashed #D7D9DC; box-shadow: none; background: rgba(255,255,255,.6);">
+        <svg width="50" height="50" viewBox="0 0 52 52" fill="none" stroke="#9C9EA4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M26 34V12"/><path d="m17 21 9-9 9 9"/><path d="M8 34v4a6 6 0 0 0 6 6h24a6 6 0 0 0 6-6v-4"/></svg>
+        <div style="text-align: center;">
+          <div style="font-size: 17px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 5px;">Glissez vos fichiers ici</div>
+          <div style="font-size: 13px; color: #7D8086;">JPEG, PNG ou WebP — 40 Mpx maximum par image</div>
+        </div>
+        <button class="pill" style="background: #3979D4; color: #FFFFFF; padding: 10px 22px;">Parcourir</button>
+      </div>
+      <div class="card" style="display: flex; align-items: center; gap: 14px; padding: 16px 20px;">
+        <svg width="19" height="19" viewBox="0 0 17 17" fill="none" stroke="#3979D4" stroke-width="1.6" stroke-linecap="round">
+          <circle cx="8.5" cy="8.5" r="6.8"/><path d="M5.6 8.7 7.6 10.7 11.4 6.6"/></svg>
+        <span style="font-size: 13px; color: #585B61;">L'orientation EXIF est corrigée automatiquement — une photo prise en mode portrait reste correctement analysée.</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="card" style="padding: 20px 22px 10px;">
+        <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 8px;">Vues attendues</div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #EFF0F2;"><span class="m" style="font-size: 13px;">front</span><span style="font-size: 13px; color: #7D8086;">Face avant</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #EFF0F2;"><span class="m" style="font-size: 13px;">rear</span><span style="font-size: 13px; color: #7D8086;">Face arrière</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #EFF0F2;"><span class="m" style="font-size: 13px;">left</span><span style="font-size: 13px; color: #7D8086;">Flanc gauche</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #EFF0F2;"><span class="m" style="font-size: 13px;">right</span><span style="font-size: 13px; color: #7D8086;">Flanc droit</span></div>
+        <div style="display: flex; justify-content: space-between; padding: 11px 0;"><span class="m" style="font-size: 13px; color: #7D8086;">front-left · rear-right</span><span style="font-size: 13px; color: #7D8086;">Diagonales</span></div>
+      </div>
+      <div style="padding: 6px 10px;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.045em; color: #9C9EA4; margin-bottom: 9px;">DONNÉES PERSONNELLES</div>
+        <div style="font-size: 12px; color: #7D8086; line-height: 1.55;">Les plaques d'immatriculation et les visages sont floutés avant tout stockage. Les clichés sont conservés le temps de l'expertise.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

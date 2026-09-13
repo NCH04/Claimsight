@@ -1,5 +1,5 @@
 {
-  "_comment": "Mapping id_source -> nom de pièce du dataset public d'origine. Repris de l'ancien scripts/clean_yolo_parts.py. Les noms doivent correspondre à src/domain/taxonomy.PART_CLASSES, ou figurer dans EXCLUDED_PARTS_V1 pour être ignorés explicitement.",
+  "_comment": "Mapping id_source -> nom de pièce du dataset public d'origine. Repris de l'ancien scripts/clean_yolo_parts.py. Les noms doivent correspondre à claimsight/domain/taxonomy.py::PART_CLASSES, ou figurer dans EXCLUDED_PARTS_V1 pour être ignorés explicitement.",
   "mapping": {
     "5":  "front bumper",
     "6":  "front left door",

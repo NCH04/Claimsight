@@ -1,0 +1,90 @@
+{
+  "artboards": [
+    {
+      "file": "Upload.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "1 · Dépôt des photos",
+      "page": "page-1"
+    },
+    {
+      "file": "Analyzing.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "2 · Analyse en cours",
+      "page": "page-1"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 1440,
+      "h": 1360,
+      "title": "3 · Constat du dossier",
+      "page": "page-1"
+    },
+    {
+      "file": "PhotoDetail.dc.html",
+      "x": 4680,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "4 · Détail d'un cliché",
+      "page": "page-1"
+    },
+    {
+      "file": "DirectionConsole.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 720,
+      "h": 460,
+      "title": "Direction B (non retenue)",
+      "page": "page-2"
+    },
+    {
+      "file": "DirectionWorkbench.dc.html",
+      "x": 840,
+      "y": 0,
+      "w": 720,
+      "h": 460,
+      "title": "Direction C (non retenue)",
+      "page": "page-2"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "direction-a",
+      "x": 0,
+      "y": -210,
+      "w": 720,
+      "page": "page-1",
+      "text": "DIRECTION A — inspirée des principes du HIG d'Apple\n\nDéférence : la donnée prime, le châssis s'efface — élévation douce et\nteintes pleines à la place des filets durs. Clarté : titres larges à\ntracking négatif, neutres froids calculés en oklch. Profondeur : coins\ncontinus, pastilles, une seule surface sombre pour la visionneuse.\n\nLa règle qui porte tout est conservée : le MONOSPACE signale une valeur\nproduite par le modèle, le sans-serif un texte écrit par un humain.\n\nManrope plutôt que SF Pro, qui est sous licence propriétaire Apple."
+    },
+    {
+      "id": "alternatives",
+      "x": 0,
+      "y": -150,
+      "w": 720,
+      "page": "page-2",
+      "text": "Deux directions écartées avant le choix, gardées pour mémoire."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Écrans"
+    },
+    {
+      "id": "page-2",
+      "name": "Directions écartées"
+    }
+  ]
+}

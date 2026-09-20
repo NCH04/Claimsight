@@ -39,7 +39,7 @@ function buildRoseData(result: ClaimResult): RoseData {
 function verdictText(result: ClaimResult): string {
   const { damage, severity } = result.image_level_damage;
   if (damage === "none") return "Aucun dommage détecté";
-  if (damage === "unknown") return "Dommage à confirmer";
+  if (damage === "unknown") return "Damage to be confirmed";
   if (severity === "unknown" || severity === "none") return damageLabel(damage);
   return `${damageLabel(damage)} ${severityLabel(severity).toLowerCase()}`;
 }
@@ -121,7 +121,7 @@ export default function App() {
           if (status.status === "done") setPhase("done");
           if (status.status === "error") {
             setPhase("failed");
-            setErrorMsg(status.error ?? "L'analyse a échoué côté serveur.");
+            setErrorMsg(status.error ?? "Analysis failed on the server.");
           }
         },
         (message) => {
@@ -147,7 +147,7 @@ export default function App() {
   };
 
   const askForView = (category: string) => {
-    setHint(`Vue ${viewLabel(category).toLowerCase()} manquante — ajoutez une photo ci-dessous.`);
+    setHint(`Vue ${viewLabel(category).toLowerCase()} missing — ajoutez une photo ci-dessous.`);
     setDropPulse(true);
     // Différé: laisse passer le scroll natif de focus du secteur cliqué
     window.setTimeout(() => {
@@ -172,11 +172,11 @@ export default function App() {
   const count = files.length > 0 ? ` (${files.length} photo${files.length > 1 ? "s" : ""})` : "";
   const analyzeLabel = working
     ? phase === "uploading"
-      ? "Envoi des photos…"
-      : "Analyse en cours…"
+      ? "Uploading photos…"
+      : "Analysing…"
     : result
       ? `Relancer l'analyse${count}`
-      : `Analyser le dossier${count}`;
+      : `Analyse le dossier${count}`;
 
   return (
     <>
@@ -210,9 +210,9 @@ export default function App() {
 
       <main className="workbench">
         {/* ----- Volet dossier ----- */}
-        <section className="panel" aria-label="Dossier photos">
+        <section className="panel" aria-label="Claim photos">
           <div className="panel-head">
-            <span className="eyebrow">Dossier photos</span>
+            <span className="eyebrow">Claim photos</span>
             {result && (
               <button type="button" className="btn ghost" onClick={reset}>
                 Nouveau dossier
@@ -265,7 +265,7 @@ export default function App() {
                             {QUALITY_LABELS[img.quality_flag] ?? img.quality_flag}
                           </span>
                         )}
-                        {img.deduplicated && <span className="chip dup">Doublon</span>}
+                        {img.deduplicated && <span className="chip dup">Duplicate</span>}
                         {img.damage_prediction.label !== "unknown" && (
                           <span className="chip mono">
                             {damageLabel(img.damage_prediction.label)} · {pct(img.damage_prediction.confidence)}
@@ -309,8 +309,8 @@ export default function App() {
               <RoseDesVues data={null} />
               <p>
                 {working
-                  ? "Analyse en cours — la fiche se remplira automatiquement."
-                  : "Aucun dossier analysé. Déposez les photos du sinistre pour ouvrir la fiche : vues couvertes, dommages, pièces touchées et photos à compléter."}
+                  ? "Analysing — la fiche se remplira automatiquement."
+                  : "Aucun dossier analysé. Drop les photos du sinistre pour ouvrir la fiche : vues couvertes, dommages, pièces touchées et photos à compléter."}
               </p>
             </div>
           ) : (
@@ -328,13 +328,13 @@ export default function App() {
 
               {result.suspected_total_loss && (
                 <div className="banner-total-loss" role="alert">
-                  Perte totale suspectée
+                  Total loss suspectée
                   <span>— plusieurs pièces sévèrement touchées. Expertise physique recommandée.</span>
                 </div>
               )}
 
               <div className="fiche-section">
-                <span className="eyebrow">Couverture des vues</span>
+                <span className="eyebrow">Coverage des vues</span>
                 <div className="rose-wrap">
                   <RoseDesVues data={roseData} onMissingClick={askForView} />
                   <div className="rose-legend">
@@ -356,14 +356,14 @@ export default function App() {
                     </div>
                     <div className="item">
                       <span className="swatch" style={{ border: "1.5px dashed var(--sev-severe)", background: "var(--fiche)" }} />
-                      Vue manquante — cliquez pour compléter
+                      Vue missing — cliquez pour compléter
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="fiche-section">
-                <span className="eyebrow">Pièces endommagées</span>
+                <span className="eyebrow">Damaged parts</span>
                 <PartsTable parts={result.damaged_parts} />
               </div>
 

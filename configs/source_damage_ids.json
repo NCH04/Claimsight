@@ -1,0 +1,29 @@
+{
+  "_comment": "Correspondance classe source -> (dégât, gravité) de la taxonomie V1. Une classe source encode souvent les deux: `severe-deformation` donne le type ET le niveau.",
+  "_source": {
+    "name": "Car Damaged Severity Detection",
+    "workspace": "car-damaged-detection-e66m0",
+    "project": "car-damaged-severity-detection",
+    "version": 29,
+    "license": "CC BY 4.0",
+    "url": "https://universe.roboflow.com/car-damaged-detection-e66m0/car-damaged-severity-detection",
+    "images": 3016
+  },
+  "mapping": {
+    "scratch":             {"damage": "scratch",            "severity": "minor"},
+    "minor-deformation":   {"damage": "dent",               "severity": "minor"},
+    "moderate-deformation":{"damage": "deformation_impact", "severity": "moderate"},
+    "severe-deformation":  {"damage": "deformation_impact", "severity": "severe"},
+    "car-part-crack":      {"damage": "crack",              "severity": "moderate"},
+    "side-mirror-crack":   {"damage": "crack",              "severity": "minor"},
+    "glass-crack":         {"damage": "broken_glass",       "severity": "moderate"},
+    "lamp-broken":         {"damage": "broken_glass",       "severity": "severe"}
+  },
+  "_ignored": {
+    "flat-tire": "Un pneu à plat n'est pas un dégât de carrosserie: aucune classe de DAMAGE_LABELS ne lui correspond, et le rattacher à `deformation_impact` serait faux."
+  },
+  "_gaps": {
+    "missing_part": "Aucune classe source dans la version 29 (les versions antérieures avaient `detachment`).",
+    "none": "Ce dataset ne contient que des véhicules endommagés. Les exemples `none` viennent du dataset de pièces, dont les véhicules sont majoritairement intacts."
+  }
+}

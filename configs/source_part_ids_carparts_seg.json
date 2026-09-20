@@ -5,7 +5,7 @@
     "license": "CC BY 4.0",
     "url": "https://docs.ultralytics.com/datasets/segment/carparts-seg/",
     "images": 3833,
-    "note": "Ne couvre pas les 4 classes d'ailes (fender) de la taxonomie V1."
+    "note": "Couvre les 12 classes V1 (les ailes ont été retirées du référentiel, la roue réintégrée)."
   },
   "mapping": {
     "0": "rear bumper",

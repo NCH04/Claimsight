@@ -21,11 +21,14 @@ Commercial use permitted **with attribution**. Downloaded automatically by
 `ultralytics`; remapped to our taxonomy by
 `scripts/remap_yolo_parts.py --mapping configs/source_part_ids_carparts_seg.json`.
 
-Covers 11 of the 15 parts in `PART_CLASSES`. The four `fender` classes have no
-equivalent in the source and carry no training data yet — their class ids are
-reserved so the id contract stays stable when they are annotated in-house.
-`rear windshield` and `wheel/rim` exist in the source but are dropped on
-purpose (`EXCLUDED_PARTS_V1`).
+Covers all 12 parts in `PART_CLASSES`. The four `fender` classes were dropped
+from V1 (`EXCLUDED_PARTS_V1`): the source has no equivalent, so they would have
+shipped as permanently empty classes. `wheel/rim` went the other way and was
+reinstated — a buckled rim is evidence of impact in its own right — but the
+source annotates wheels inconsistently, often only the front one, which caps it
+at 0.400 mAP50 and makes it the detector's weakest class.
+
+`side door` and `rear windshield` stay excluded.
 
 *Attribution to reproduce wherever the model is distributed:*
 > Carparts Segmentation dataset, Ultralytics, licensed under CC BY 4.0.
@@ -37,10 +40,26 @@ purpose (`EXCLUDED_PARTS_V1`).
 **Car Damaged Severity Detection** · **CC BY 4.0** · 3,016 images (v29)
 <https://universe.roboflow.com/car-damaged-detection-e66m0/car-damaged-severity-detection>
 
+```bash
+export ROBOFLOW_API_KEY=...       # jamais en argument, jamais dans un fichier
+make fetch-damage                 # refuse de télécharger hors licence autorisée
+```
+
 Commercial use permitted **with attribution**. Its class names encode damage
 type *and* severity at once (`severe-deformation`), so one dataset feeds both
-classifiers. Mapped by `configs/source_damage_ids.json` and
-`scripts/derive_damage_labels.py`, which keeps the worst finding per image.
+classifiers. Mapped by `configs/source_damage_ids.json`, then read twice, because the
+classifier is trained on two domains and served on both:
+
+- `scripts/derive_damage_labels.py` → one row per **whole photo**, keeping the
+  worst finding by ordinal severity.
+- `scripts/derive_damage_crops.py` → one row per **damage polygon**, cut to its
+  bounding box with the same 8% margin `Detection.crop` uses at inference, plus
+  the parts of intact vehicles as `none`.
+
+`scripts/merge_label_csv.py` concatenates the two into `damage_mixed.csv`
+(10,583 rows over 3,284 photos). Training on whole photos alone produced a
+classifier that answered `none` on 59 of 60 intact cars but on only 44 of the
+277 part crops taken from those same cars.
 
 Two gaps, both recorded in the mapping file:
 

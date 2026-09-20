@@ -99,12 +99,21 @@ have no source. Decide that mapping before training.
 
 ---
 
-## View classification — no public source
+## View classification — retired in V1
 
 No public dataset labels vehicle photos with the eight orientations in
-`VIEW_CLASSES`. This model is trained solely on in-house Label Studio
-annotations, which is why `dataset/annotations/` is the one data directory
-kept under version control.
+`VIEW_CLASSES`, and the in-house Label Studio annotations that trained the
+first version were lost with the WSL image that held them.
+
+Rather than re-annotate, V1 replaced the model: the product feature only ever
+needed four independent faces, which `Coverage` predicts directly and which
+part annotations already imply. `VIEW_CLASSES` stays in the taxonomy because
+the output schema still carries a `view_prediction` field, but no model is
+trained for it.
+
+`.gitignore` keeps an exception for `dataset/annotations/` so a future export
+is versioned rather than ignored by accident. The directory does not exist
+today.
 
 ---
 

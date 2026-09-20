@@ -7,7 +7,7 @@ Detects what was photographed, what is damaged, how badly — and which photo th
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-1D1F23.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3979D4.svg)](pyproject.toml)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.2%2B-C54D47.svg)](https://pytorch.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.4%2B-C54D47.svg)](https://pytorch.org)
 [![CI](https://github.com/NCH04/Claimsight/actions/workflows/ci.yml/badge.svg)](https://github.com/NCH04/Claimsight/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-101%20passing-3979D4.svg)](tests/)
 [![Ruff](https://img.shields.io/badge/lint-ruff-A87100.svg)](https://docs.astral.sh/ruff/)
@@ -62,6 +62,11 @@ ClaimSight answers all three from the raw photos, and returns a structured repor
 
 ```bash
 pip install -e ".[all]"
+
+# Weights are not in the repository — 277 MB of .pt files do not belong in git.
+# Download them into models/ (see "Getting the weights" below).
+curl -L https://github.com/NCH04/Claimsight/releases/latest/download/models.tar.gz \
+  | tar -xz
 
 claimsight --images_dir path/to/claim/photos   # CLI
 claimsight-serve                               # HTTP API on :8000, docs at /docs
@@ -451,6 +456,37 @@ covers what the model is actually asked at serving time.
 It paid twice. The false-positive rate on crops fell from 84% to 4%, and
 because every damage polygon becomes its own example, `dent` — the starved
 class — went from 95 examples to 305 and its F1 from 0.216 to 0.339.
+
+---
+
+## Getting the weights
+
+`models/` is git-ignored: four checkpoints weigh 277 MB, and a repository is
+not an artefact store. Each release ships them as one archive.
+
+```bash
+curl -L https://github.com/NCH04/Claimsight/releases/latest/download/models.tar.gz | tar -xz
+make sanity IMAGES=path/to/photos    # verifies the pipeline end to end
+```
+
+| File | Size | What it is |
+|---|---|---|
+| `models/parts.pt` | 20 MB | YOLO11s-seg, 12 part classes |
+| `models/coverage.pt` | 85 MB | ResNet-34, 4 faces, multi-label, calibrated |
+| `models/damage.pt` | 85 MB | ResNet-34, 6 damage types, calibrated |
+| `models/severity.pt` | 85 MB | ResNet-34, 4 ordinal levels, calibrated |
+
+The `.calibration.json` next to each checkpoint records how its temperature was
+obtained; the temperature itself is already inside the `.pt`, along with the
+preprocessing contract.
+
+Without them the pipeline refuses to start and tells you both ways out — this
+download, or training your own. It never runs silently on missing models.
+
+> **These weights are derived from CC BY 4.0 datasets and inherit those terms.**
+> Attribution is required wherever they are redistributed; the two notices are
+> in [`dataset/README.md`](dataset/README.md). The Apache 2.0 licence covers
+> the code, not the weights.
 
 ---
 

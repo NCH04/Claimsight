@@ -39,6 +39,8 @@ weights/
 models/
 *.pt
 *.pth
+# Archive des poids publiée en Release, jamais dans le dépôt.
+models.tar.gz
 *.onnx
 
 # --- Outputs pipeline & entraînement ---
@@ -54,3 +56,8 @@ kaggle.json
 # --- Front ---
 node_modules/
 web/dist/
+
+# Rapports de couverture (pytest-cov).
+.coverage
+htmlcov/
+coverage.xml

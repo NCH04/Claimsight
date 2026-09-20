@@ -12,6 +12,9 @@ il impose un aller-retour serveur par image. Cet outil affiche l'image en plein
 Raccourcis : 1 avant · 2 arrière · 3 gauche · 4 droite
              Entrée valider · ← revenir · S passer · A tout décocher
 
+Avec --prefill, les cases arrivent pré-cochées par une source existante: on ne
+corrige que ce qui est faux, ce qui va trois à cinq fois plus vite.
+
 Le CSV est réécrit après chaque validation: fermer l'onglet ne perd rien, et
 relancer la commande reprend là où vous vous étiez arrêté.
 """
@@ -95,20 +98,41 @@ load();
 </script></body></html>"""
 
 
+def _read_labels(path: Path) -> dict[str, list[str]]:
+    if not path.exists():
+        return {}
+    with path.open(encoding="utf-8") as fh:
+        return {
+            row["image"]: [f for f in COVERAGE_FACES if row.get(f) == "1"]
+            for row in csv.DictReader(fh)
+        }
+
+
 class Session:
-    def __init__(self, images: list[Path], out: Path) -> None:
+    def __init__(self, images: list[Path], out: Path, prefill: Path | None = None) -> None:
         self.images = images
         self.out = out
-        self.labels: dict[str, list[str]] = {}
+        self.labels = _read_labels(out)
         self.i = 0
-        if out.exists():
-            with out.open(encoding="utf-8") as fh:
-                for row in csv.DictReader(fh):
-                    self.labels[row["image"]] = [f for f in COVERAGE_FACES if row.get(f) == "1"]
+
+        if self.labels:
             print(f"{len(self.labels)} annotation(s) déjà présentes, reprise.")
-        # On repart à la première image non traitée.
-        while self.i < len(self.images) and str(self.images[self.i]) in self.labels:
-            self.i += 1
+            # On reprend à la première image non traitée.
+            while self.i < len(self.images) and str(self.images[self.i]) in self.labels:
+                self.i += 1
+        elif prefill is not None:
+            # Mode relecture: les cases arrivent pré-cochées par une source
+            # existante (labels dérivés, prédictions du modèle). Corriger va
+            # bien plus vite qu'étiqueter à blanc, et AUCUNE image n'est
+            # sautée — c'est tout l'intérêt de la relecture.
+            suggested = _read_labels(prefill)
+            by_name = {Path(k).name: v for k, v in suggested.items()}
+            for image in self.images:
+                proposal = suggested.get(str(image)) or by_name.get(image.name)
+                if proposal is not None:
+                    self.labels[str(image)] = proposal
+            print(f"Relecture: {len(self.labels)}/{len(self.images)} images pré-remplies "
+                  f"depuis {prefill}. Corrigez ce qui est faux, validez le reste.")
 
     def current(self) -> dict:
         if self.i >= len(self.images):
@@ -188,6 +212,9 @@ def main() -> None:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--images_dir", required=True)
     ap.add_argument("--out", default="dataset/coverage_manual.csv")
+    ap.add_argument("--prefill", default=None,
+                    help="CSV de départ (labels dérivés): les cases arrivent pré-cochées, "
+                         "vous ne faites que corriger")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no_browser", action="store_true")
     args = ap.parse_args()
@@ -197,7 +224,8 @@ def main() -> None:
     if not images:
         raise SystemExit(f"Aucune image dans {root}")
 
-    session = Session(images, Path(args.out))
+    session = Session(images, Path(args.out),
+                      Path(args.prefill) if args.prefill else None)
     server = HTTPServer(("127.0.0.1", args.port), make_handler(session))
     url = f"http://127.0.0.1:{args.port}"
 

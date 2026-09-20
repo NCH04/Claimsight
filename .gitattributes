@@ -1,0 +1,13 @@
+# GitHub classe les langages du dépôt par nombre d'OCTETS. Sans ces règles,
+# le canvas de design compilé (2,5 Mo, l'éditeur y est embarqué) écrase les
+# 5 000 lignes de Python et le dépôt s'affiche comme un projet HTML.
+
+# Canvas de design compilé — généré par le seeder depuis les .dc.html.
+design/claimsight-interface.html linguist-generated=true
+
+# Verrou de dépendances npm.
+web/package-lock.json linguist-generated=true
+
+# Les .dc.html sont des sources de design écrites à la main, pas du code
+# applicatif: on les garde visibles mais hors du décompte des langages.
+design/*.dc.html linguist-documentation=true

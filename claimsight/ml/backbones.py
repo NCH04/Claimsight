@@ -36,7 +36,7 @@ def _replace_head(model: nn.Module, arch: str, num_classes: int) -> nn.Module:
         in_feats = model.classifier[-1].in_features
         model.classifier[-1] = nn.Linear(in_feats, num_classes)
     else:  # pragma: no cover - garde-fou si _REGISTRY grandit sans mise à jour
-        raise ValueError(f"Tête de classification inconnue pour l'architecture: {arch}")
+        raise ValueError(f"Unknown classification head for architecture: {arch}")
     return model
 
 

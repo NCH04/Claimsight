@@ -57,7 +57,7 @@ def main(argv=None) -> None:
         )
 
     LOGGER.info("Dataset : %s", data_path)
-    LOGGER.info("Modèle  : %s | epochs=%d imgsz=%d", args.model, args.epochs, args.imgsz)
+    LOGGER.info("Model   : %s | epochs=%d imgsz=%d", args.model, args.epochs, args.imgsz)
 
     # Ultralytics résout un `project` RELATIF sous son propre `runs_dir`, ce qui
     # enterre la sortie dans runs/segment/<project>/. On impose donc un chemin

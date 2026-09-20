@@ -128,7 +128,7 @@ def _load_multilabel(df, args, task: TaskConfig):
     before = len(df)
     df = df[df[list(task.classes)].sum(axis=1) > 0]
     if before != len(df):
-        LOGGER.info("%d image(s) sans aucune face retirée(s)", before - len(df))
+        LOGGER.info("%d image(s) with no face at all removed", before - len(df))
 
     counts = df[list(task.classes)].sum()
     rare = [c for c in task.classes if counts[c] < args.k]
@@ -160,7 +160,7 @@ def _load_singlelabel(df, args, task: TaskConfig):
         drop |= set(task.optional_drop_labels)
     if drop:
         df = df[~df[task.label_column].isin(drop)]
-        LOGGER.info("Labels exclus %s -> %d lignes retirées", sorted(drop), before - len(df))
+        LOGGER.info("Excluded labels %s -> %d rows removed", sorted(drop), before - len(df))
 
     unknown = set(df[task.label_column].unique()) - set(task.classes)
     if unknown:
@@ -201,7 +201,7 @@ def make_train_loader(df_train, args, task, label2idx, train_tf) -> DataLoader:
     g.manual_seed(args.seed)
 
     if args.use_weighted_sampler and task.multilabel:
-        LOGGER.warning("--use_weighted_sampler ignoré en multi-label "
+        LOGGER.warning("--use_weighted_sampler ignored in multi-label "
                        "(pas de classe unique par image); la pondération passe par pos_weight.")
     if args.use_weighted_sampler and not task.multilabel:
         counts = df_train[task.label_column].value_counts()
@@ -336,7 +336,7 @@ def fit(
             scheduler = torch.optim.lr_scheduler.StepLR(
                 optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma
             )
-            LOGGER.info("  backbone dégelé (epoch %d)", epoch)
+            LOGGER.info("  backbone unfrozen (epoch %d)", epoch)
 
         loss = train_one_epoch(model, train_loader, optimizer, criterion, device, scaler)
         scheduler.step()
@@ -410,13 +410,13 @@ def run(args) -> dict:
     LOGGER.info("Tâche      : %s — %s", task.name, task.description)
     LOGGER.info("Images     : %d | classes: %d %s", len(df), len(labels), labels)
     if task.multilabel:
-        LOGGER.info("Répartition: %s (positifs par face)",
+        LOGGER.info("Distribution: %s (positives per face)",
                     {c: int(df[c].sum()) for c in labels})
     else:
-        LOGGER.info("Répartition: %s", df[task.label_column].value_counts().to_dict())
+        LOGGER.info("Distribution: %s", df[task.label_column].value_counts().to_dict())
     LOGGER.info("Device     : %s | backbone: %s | img_size: %d | resize: %s",
                 device, args.backbone, args.img_size, args.resize_mode)
-    LOGGER.info("Split      : %s", f"groupé par {group_col!r}" if group_col else "PAR IMAGE (non groupé)")
+    LOGGER.info("Split      : %s", f"grouped by {group_col!r}" if group_col else "PER IMAGE (not grouped)")
 
     train_tf = build_train_transform(args.img_size, args.resize_mode)
     eval_tf = build_eval_transform(args.img_size, args.resize_mode)
@@ -520,7 +520,7 @@ def run(args) -> dict:
     # médian retenu par la CV. La CV donne l'estimation, ce fit donne le modèle.
     if args.final_fit:
         n_epochs = int(np.median(best_epochs)) or 1
-        LOGGER.info("\n===== FINAL FIT (toutes les données, %d epochs) =====", n_epochs)
+        LOGGER.info("\n===== FINAL FIT (all data, %d epochs) =====", n_epochs)
         final_args = copy.copy(args)
         final_args.epochs = n_epochs
         final_args.early_stopping_patience = 0
@@ -540,11 +540,11 @@ def run(args) -> dict:
         )
         results["final_model"] = str(final_path)
         results["final_epochs"] = n_epochs
-        LOGGER.info("Modèle déployable -> %s", final_path)
+        LOGGER.info("Deployable model -> %s", final_path)
 
     metrics_path = out_dir / f"{task.name}_metrics.json"
     metrics_path.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
-    LOGGER.info("Métriques -> %s", metrics_path)
+    LOGGER.info("Metrics -> %s", metrics_path)
     return results
 
 

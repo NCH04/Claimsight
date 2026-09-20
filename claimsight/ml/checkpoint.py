@@ -96,7 +96,7 @@ def load_checkpoint(path: str | Path) -> tuple[dict[str, Any], CheckpointMeta]:
         ) from exc
 
     if not isinstance(ckpt, dict):
-        raise ValueError(f"Checkpoint {ckpt_path}: dict attendu, reçu {type(ckpt).__name__}")
+        raise ValueError(f"Checkpoint {ckpt_path}: expected a dict, got {type(ckpt).__name__}")
 
     # `or` serait piégeux ici (un state_dict vide est falsy) -> test d'appartenance.
     state = ckpt["model"] if "model" in ckpt else ckpt.get("model_state")

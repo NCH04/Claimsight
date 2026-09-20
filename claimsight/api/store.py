@@ -42,7 +42,7 @@ class Claim:
 
 
 class ClaimStore:
-    """Dossiers sur disque + état des analyses en mémoire."""
+    """Claims on disk, plus in-memory analysis state."""
 
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
@@ -59,7 +59,7 @@ class ClaimStore:
         identifiant venu de l'URL ne doit jamais pouvoir remonter l'arborescence.
         """
         if not claim_id.isalnum() or len(claim_id) > 64:
-            raise ValueError(f"Identifiant de dossier invalide: {claim_id!r}")
+            raise ValueError(f"Invalid claim id: {claim_id!r}")
         return self.root / claim_id
 
     def images_dir(self, claim_id: str) -> Path:

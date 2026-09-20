@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import collections
 import csv
+import re
 from pathlib import Path
 
 import yaml
@@ -42,6 +43,18 @@ FACE_INDICATORS: dict[str, set[str]] = {
 
 def faces_from_parts(parts: set[str]) -> list[str]:
     return [f for f in COVERAGE_FACES if parts & FACE_INDICATORS[f]]
+
+
+def photo_id(filename: str) -> str:
+    """Identifiant de la PHOTO d'origine, augmentations mises de côté.
+
+    Un dataset Roboflow contient ~6 variantes augmentées par photo, nommées
+    `<photo>_jpg.rf.<hash>.jpg`. Sans cet identifiant, les variantes d'une même
+    photo se répartissent entre entraînement et validation: le modèle revoit en
+    validation ce qu'il a appris, et les métriques sont surévaluées. C'est la
+    colonne à passer en `--group_column`.
+    """
+    return re.split(r"_(jpg|png|jpeg)", Path(filename).name, maxsplit=1)[0]
 
 
 def main() -> None:
@@ -75,6 +88,7 @@ def main() -> None:
                 continue
             rows.append({"image": str(image.resolve()),
                          **{f: int(f in faces) for f in COVERAGE_FACES},
+                         "photo_id": photo_id(image.name),
                          "source": "derived"})
             for f in faces:
                 stats[f] += 1
@@ -83,11 +97,13 @@ def main() -> None:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=["image", *COVERAGE_FACES, "source"])
+        w = csv.DictWriter(fh, fieldnames=["image", *COVERAGE_FACES, "photo_id", "source"])
         w.writeheader()
         w.writerows(rows)
 
-    print(f"{out} — {len(rows)} images")
+    photos = {r["photo_id"] for r in rows}
+    print(f"{out} — {len(rows)} images / {len(photos)} photos distinctes "
+          f"({len(rows) / max(len(photos), 1):.1f} augmentations par photo)")
     for face in COVERAGE_FACES:
         pct = 100 * stats[face] / max(len(rows), 1)
         print(f"  {face:6s} {stats[face]:5d}  ({pct:.0f} %)")

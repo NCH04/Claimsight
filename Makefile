@@ -1,6 +1,8 @@
 .PHONY: install install-cpu test lint web-install web-dev web-build calibrate serve pipeline sanity derive-coverage annotate train-coverage train-view train-damage train-severity train-parts yolo-config clean
 
-PY ?= python
+# Utilise le venv du projet s'il existe: `make` ne doit pas dépendre du fait
+# que l'utilisateur ait activé l'environnement.
+PY ?= $(shell test -x .venv/bin/python && echo .venv/bin/python || echo python3)
 IMAGES ?= dataset/images_mapped
 CSV    ?= dataset/labels.csv
 PARTS_DATASET ?= ../datasets/carparts-seg

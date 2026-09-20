@@ -24,7 +24,7 @@ export function Dropzone({
       className={`dropzone${dragover ? " dragover" : ""}${pulse ? " pulse" : ""}`}
       role="button"
       tabIndex={0}
-      aria-label="Déposer les photos du sinistre"
+      aria-label="Drop the claim photos"
       onClick={openPicker}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -43,7 +43,7 @@ export function Dropzone({
         onFiles(Array.from(e.dataTransfer.files));
       }}
     >
-      <strong>Déposer les photos du sinistre</strong>
+      <strong>Drop the claim photos</strong>
       <span>ou parcourir vos fichiers — jpg, png, webp</span>
       <input
         ref={inputRef}
@@ -62,7 +62,7 @@ export function Dropzone({
 
 export function StatusPill({ state }: { state: "idle" | "working" | "done" | "error" }) {
   const label =
-    state === "working" ? "analyse en cours" : state === "done" ? "analyse terminée" : state === "error" ? "échec" : "en attente";
+    state === "working" ? "analyse en cours" : state === "done" ? "analysis complete" : state === "error" ? "échec" : "en attente";
   const cls = state === "working" ? "working" : state === "done" ? "done" : state === "error" ? "error" : "";
   return (
     <span className={`status-pill ${cls}`}>
@@ -76,7 +76,7 @@ export function ConfidenceMeter({ value }: { value: number }) {
   return (
     <div className="confidence">
       <div className="label">
-        <span>Confiance globale</span>
+        <span>Confidence globale</span>
         <span className="value">{pct(value)}</span>
       </div>
       <div
@@ -85,7 +85,7 @@ export function ConfidenceMeter({ value }: { value: number }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(value * 100)}
-        aria-label="Confiance globale de l'analyse"
+        aria-label="Confidence globale de l'analyse"
       >
         <div className="fill" style={{ width: `${Math.round(value * 100)}%` }} />
       </div>
@@ -114,7 +114,7 @@ export function PartsTable({ parts }: { parts: DamagedPart[] }) {
           <th scope="col">Pièce</th>
           <th scope="col">Dommage</th>
           <th scope="col">Sévérité</th>
-          <th scope="col">Confiance</th>
+          <th scope="col">Confidence</th>
           <th scope="col">Vues</th>
         </tr>
       </thead>
@@ -150,7 +150,7 @@ export function MissingList({
       {missing.map((cat) => (
         <div key={cat} className="missing-item">
           <span>
-            Vue <strong>{viewLabel(cat).toLowerCase()}</strong> manquante — ajoutez une photo.
+            Vue <strong>{viewLabel(cat).toLowerCase()}</strong> missing — ajoutez une photo.
           </span>
           <button type="button" onClick={() => onComplete(cat)}>
             Compléter le dossier

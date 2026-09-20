@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { viewLabel } from "../i18n";
 
-/* Rose des vues: silhouette du véhicule vue de dessus, entourée des 8 secteurs
+/* View rosette: silhouette du véhicule vue de dessus, entourée des 8 secteurs
    de prise de vue. Secteur plein = vue couverte (couleur = pire sévérité),
-   secteur pointillé = vue requise manquante (cliquable). */
+   secteur pointillé = vue requise missing (cliquable). */
 
 export interface RoseData {
   countByView: Record<string, number>;
@@ -76,9 +76,9 @@ export default function RoseDesVues({ data, onMissingClick }: Props) {
 
   const coveredCount = Object.values(covered).filter((n) => n > 0).length;
   const ariaLabel = data
-    ? `Couverture des vues: ${coveredCount} vue(s) couverte(s)` +
-      (data.missing.length ? `, manquantes: ${data.missing.map(viewLabel).join(", ")}` : "")
-    : "Aucune photo analysée pour l'instant";
+    ? `Coverage des vues: ${coveredCount} vue(s) couverte(s)` +
+      (data.missing.length ? `, missings: ${data.missing.map(viewLabel).join(", ")}` : "")
+    : "No photos analysed yet";
 
   return (
     <svg viewBox="0 0 340 340" width="300" height="300" role="img" aria-label={ariaLabel}>
@@ -111,7 +111,7 @@ export default function RoseDesVues({ data, onMissingClick }: Props) {
               tabIndex={interactive ? 0 : undefined}
               aria-label={
                 interactive
-                  ? `Vue ${viewLabel(s.view).toLowerCase()} manquante — ajoutez une photo`
+                  ? `Vue ${viewLabel(s.view).toLowerCase()} missing — ajoutez une photo`
                   : undefined
               }
               onClick={interactive ? () => onMissingClick(s.view) : undefined}
@@ -128,7 +128,7 @@ export default function RoseDesVues({ data, onMissingClick }: Props) {
             >
               <title>
                 {viewLabel(s.view)}
-                {isCovered ? ` — ${count} photo${count > 1 ? "s" : ""}` : isMissing ? " — manquante" : ""}
+                {isCovered ? ` — ${count} photo${count > 1 ? "s" : ""}` : isMissing ? " — missing" : ""}
               </title>
             </path>
             <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" className={labelCls}>

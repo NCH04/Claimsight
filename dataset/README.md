@@ -2,7 +2,7 @@
 
 Images are **not** committed to this repository (`.gitignore` excludes them).
 This file records where the training data comes from and what each source
-permits, because those terms — not this repository's MIT licence — govern the
+permits, because those terms — not this repository's Apache 2.0 licence — govern the
 data and any model weights derived from it.
 
 > **Read this before publishing weights.** A licence that permits training does
@@ -32,7 +32,32 @@ purpose (`EXCLUDED_PARTS_V1`).
 
 ---
 
-## Damage classification — candidate, not yet used
+## Damage and severity classification — in use
+
+**Car Damaged Severity Detection** · **CC BY 4.0** · 3,016 images (v29)
+<https://universe.roboflow.com/car-damaged-detection-e66m0/car-damaged-severity-detection>
+
+Commercial use permitted **with attribution**. Its class names encode damage
+type *and* severity at once (`severe-deformation`), so one dataset feeds both
+classifiers. Mapped by `configs/source_damage_ids.json` and
+`scripts/derive_damage_labels.py`, which keeps the worst finding per image.
+
+Two gaps, both recorded in the mapping file:
+
+- `missing_part` has no source class in v29 (older versions had `detachment`).
+- The dataset contains **only damaged vehicles**, so `none` examples are drawn
+  from the parts dataset, whose vehicles are assumed intact. That assumption is
+  weak supervision, not ground truth.
+
+`flat-tire` is dropped on purpose: a flat tire is not body damage, and folding
+it into `deformation_impact` would be wrong.
+
+*Attribution to reproduce wherever the model is distributed:*
+> Car Damaged Severity Detection, Roboflow Universe, licensed under CC BY 4.0.
+
+---
+
+## CarDD — evaluated, rejected
 
 **CarDD** · **non-commercial research and education only** · 4,000 images
 <https://cardd-ustc.github.io/>

@@ -5,7 +5,7 @@
 **Automated vehicle damage assessment from claim photos.**
 Detects what was photographed, what is damaged, how badly — and which photo the adjuster forgot to take.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-1D1F23.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-1D1F23.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3979D4.svg)](pyproject.toml)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.2%2B-C54D47.svg)](https://pytorch.org)
 [![CI](https://github.com/NCH04/Claimsight/actions/workflows/ci.yml/badge.svg)](https://github.com/NCH04/Claimsight/actions/workflows/ci.yml)
@@ -84,7 +84,7 @@ Four design decisions carry the system:
 
 | Model | Task | Status |
 |---|---|---|
-| **Coverage** | 4 vehicle faces, **multi-label** | 🟢 trained — macro-F1 **0.969**, exact-match **0.927** |
+| **Coverage** | 4 vehicle faces, **multi-label** | 🟢 trained — macro-F1 **0.904**, exact-match **0.786** |
 | **Parts** | 15 vehicle parts, instance segmentation | 🟢 trained — mAP50 **0.830** |
 | **Damage** | 7 damage types | 🟡 trainable — no licence-compatible dataset yet |
 | **Severity** | 4 ordinal levels | 🟡 trainable — no public source |
@@ -102,21 +102,29 @@ photos can cover all four faces**, which exclusive classes cannot express;
 annotation becomes ticking boxes instead of choosing among ten; and the rare
 diagonal classes stop starving the model.
 
-4-fold grouped cross-validation, per face:
+4-fold cross-validation, **grouped by source photo**, per face:
 
 | | front | rear | left | right |
 |---|---|---|---|---|
-| **F1** | 0.983 | 0.958 | 0.967 | 0.969 |
+| **F1** | 0.951 | 0.854 | 0.902 | 0.908 |
 
-`left` and `right` hold up despite being only ~7% of the training labels —
-`pos_weight` in the BCE loss is what keeps the model from answering "absent"
-every time. Their higher fold-to-fold variance (±0.014, ±0.026 against ±0.004
-for `front`) is the honest signal that they rest on few examples.
+`left` and `right` hold up (0.90) despite resting on **89 distinct photos** —
+`pos_weight` in the BCE loss is what stops the model from answering "absent"
+every time. Their wider fold-to-fold spread (±0.018, ±0.029 against ±0.002 for
+`front`) is the honest signal that they rest on few examples.
 
-> **Read these numbers for what they are.** They measure agreement with labels
-> *derived from part annotations*, not with human ground truth. The model
-> reproduces that heuristic very well; how it behaves on real phone photos is
-> not yet measured.
+> **Two caveats, both load-bearing.**
+>
+> **Grouping matters more than it looks.** The source dataset ships ~6 augmented
+> copies per photo (rotations), so 3,658 files are really **585 photos**.
+> Splitting by file leaks copies of the same photo across folds and inflates
+> every metric: the same model scores 0.927 exact-match ungrouped against
+> **0.786** grouped. Only the grouped figure means anything, and
+> `--group_column photo_id` is what enforces it.
+>
+> **These labels are derived, not human.** They measure agreement with a rule
+> read off part annotations, not with ground truth. How the model behaves on
+> real phone photos is still unmeasured.
 
 It also unlocked free training data. Part annotations reveal the camera angle —
 a photo labelling a front bumper and headlights shows the front — so
@@ -256,7 +264,7 @@ python scripts/build_yolo_config.py
 claimsight-train-parts --epochs 100 --imgsz 640
 ```
 
-> **The MIT licence covers the code only.** Datasets and any weights derived from them carry their source's terms, which may be non-commercial.
+> **The Apache 2.0 licence covers the code only.** Datasets and any weights derived from them carry their source's terms, which may be non-commercial.
 
 ---
 
@@ -297,4 +305,4 @@ make lint
 
 ## License
 
-[MIT](LICENSE) — see the note on datasets and model weights.
+[Apache 2.0](LICENSE) — see the note on datasets and model weights.

@@ -149,21 +149,26 @@ PART_CLASSES: tuple[str, ...] = (
     "front right door",
     "rear left door",
     "rear right door",
-    "left fender",
-    "right fender",
-    "rear left fender",
-    "rear right fender",
     "headlights",
     "taillights",
+    # Une roue voilée ou un pneu éclaté est un indice de choc à part entière,
+    # et le dataset source l'annote: on la réintègre en V1.
+    "wheel/rim",
 )
 
 #: Exclues de la V1 par décision produit (specs/supported_parts_v1.md §Removed).
 #: Conservées ici pour que le remapping du dataset source puisse les ignorer
 #: explicitement plutôt que silencieusement.
 EXCLUDED_PARTS_V1: tuple[str, ...] = (
-    "wheel/rim",
     "side door",
     "rear windshield",
+    # Les ailes n'existent dans aucune source disponible: plutôt que de garder
+    # quatre classes sans jamais une seule donnée, on les retire du référentiel.
+    # Elles reviendront le jour où elles seront annotées.
+    "left fender",
+    "right fender",
+    "rear left fender",
+    "rear right fender",
 )
 
 PART_TO_ID: Mapping[str, int] = {name: i for i, name in enumerate(PART_CLASSES)}

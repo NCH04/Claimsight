@@ -39,7 +39,7 @@ def test_health_reports_each_model(client):
     body = client.get("/api/health").json()
     assert body["status"] == "ready"
     assert set(body["models"]) == {"coverage", "view", "damage", "severity", "parts"}
-    assert body["models"]["damage"]["detail"] == "non entraîné"
+    assert body["models"]["damage"]["detail"] == "not trained"
 
 
 def test_health_is_unavailable_without_models(monkeypatch):

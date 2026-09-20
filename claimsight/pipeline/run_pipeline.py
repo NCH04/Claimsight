@@ -100,7 +100,7 @@ def run_pipeline(
 
     try:
         if bundle is None:
-            LOGGER.info("Chargement des modèles (coverage=%s, view=%s)",
+            LOGGER.info("Loading models (coverage=%s, view=%s)",
                         coverage_checkpoint, view_checkpoint)
             bundle = ModelBundle.load(
                 coverage_checkpoint, view_checkpoint,
@@ -108,16 +108,16 @@ def run_pipeline(
                 thresholds=thresholds,
             )
     except Exception as exc:
-        LOGGER.error("Chargement des modèles impossible: %s", exc)
-        result = _empty_result(t0, f"Chargement des modèles impossible: {exc}", [str(exc)])
+        LOGGER.error("Could not load models: %s", exc)
+        result = _empty_result(t0, f"Could not load models: {exc}", [str(exc)])
         if out_json:
             save_json(result, out_json)
         return result
 
     if not bundle.damage.available:
-        warnings.append("Modèle `damage` non entraîné: prédictions `unknown`.")
+        warnings.append("Model `damage` not trained: predictions are `unknown`.")
     if not bundle.severity.available:
-        warnings.append("Modèle `severity` non entraîné: prédictions `unknown`.")
+        warnings.append("Model `severity` not trained: predictions are `unknown`.")
 
     # Décodage: on isole les images illisibles sans faire échouer le dossier.
     images, kept_paths = [], []
@@ -129,7 +129,7 @@ def run_pipeline(
             errors.append(f"{path.name}: {exc}")
 
     if not images:
-        result = _empty_result(t0, "Aucune image exploitable.", errors)
+        result = _empty_result(t0, "No usable image.", errors)
         result["warnings"] = warnings
         if out_json:
             save_json(result, out_json)
@@ -142,7 +142,7 @@ def run_pipeline(
     duplicate_of = find_duplicates(hash_images(images), threshold=dedup_threshold)
     n_dupes = sum(1 for d in duplicate_of if d is not None)
     if n_dupes:
-        LOGGER.info("%d doublon(s) détecté(s) et exclus de l'agrégation", n_dupes)
+        LOGGER.info("%d duplicate(s) detected and excluded from aggregation", n_dupes)
 
     t_infer = time.time()
     coverage_preds = (
@@ -162,7 +162,7 @@ def run_pipeline(
     input_images = [
         {
             "filename": name,
-            "detected_view": view.label,  # compat schéma v1
+            "detected_view": view.label,  # v1 schema compatibility
             "view_prediction": view.as_dict(),
             "damage_prediction": damage.as_dict(),
             "severity_prediction": severity.as_dict(),
@@ -278,26 +278,26 @@ def run_pipeline(
     }
 
     if out_json:
-        LOGGER.info("Résultat -> %s", out_json)
+        LOGGER.info("Result -> %s", out_json)
         save_json(result, out_json)
     return result
 
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
-        description="Pipeline V1 (vues + dégât/gravité image-level).",
+        description="V1 pipeline (coverage + image-level damage/severity).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     ap.add_argument("--images_dir", required=True)
     ap.add_argument("--out_json", default="outputs/result.json")
     ap.add_argument("--coverage_checkpoint", default="models/coverage.pt",
-                    help="Modèle multi-label de couverture photo (alimente missing_photos)")
+                    help="Multi-label photo-coverage model (feeds missing_photos)")
     ap.add_argument("--view_checkpoint", default="models/view.pt",
-                    help="Modèle de vue (optionnel, descriptif)")
+                    help="View model (optional, descriptive only)")
     ap.add_argument("--damage_checkpoint", default="models/damage.pt")
     ap.add_argument("--severity_checkpoint", default="models/severity.pt")
     ap.add_argument("--parts_checkpoint", default="models/parts.pt",
-                    help="Détecteur de pièces YOLO (alimente raw_detections et damaged_parts)")
+                    help="YOLO part detector (feeds raw_detections and damaged_parts)")
     ap.add_argument("--recursive", action="store_true")
     ap.add_argument("--batch_size", type=int, default=INFERENCE_BATCH_SIZE)
     ap.add_argument("--min_view_confidence", type=float, default=None,

@@ -54,10 +54,10 @@ async def lifespan(app: FastAPI):
             severity_checkpoint=os.getenv("CLAIMSIGHT_SEVERITY", "models/severity.pt"),
             parts_checkpoint=os.getenv("CLAIMSIGHT_PARTS", "models/parts.pt"),
         )
-        LOGGER.info("Modèles chargés.")
+        LOGGER.info("Models loaded.")
     except Exception as exc:  # le service démarre quand même; /api/health l'expose
         STATE["error"] = str(exc)
-        LOGGER.error("Chargement des modèles impossible: %s", exc)
+        LOGGER.error("Could not load models: %s", exc)
     yield
     STATE["bundle"] = None
 
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="ClaimSight",
     version=PIPELINE_VERSION,
-    summary="Analyse automatisée de photos de sinistres automobiles.",
+    summary="Automated assessment of vehicle damage from claim photos.",
     lifespan=lifespan,
 )
 
@@ -81,14 +81,14 @@ app.add_middleware(
 def _store() -> ClaimStore:
     store = STATE["store"]
     if store is None:
-        raise HTTPException(503, "Service non initialisé.")
+        raise HTTPException(503, "Service not initialised.")
     return store
 
 
 def _bundle():
     bundle = STATE["bundle"]
     if bundle is None:
-        raise HTTPException(503, f"Modèles indisponibles: {STATE['error']}")
+        raise HTTPException(503, f"Models unavailable: {STATE['error']}")
     return bundle
 
 
@@ -97,7 +97,7 @@ def _bundle():
 
 @app.get("/api/health", response_model=Health, tags=["service"])
 def health() -> Health:
-    """État des modèles. `ready` dès qu'une orientation est disponible."""
+    """Model status. `ready` as soon as a coverage model is loaded."""
     bundle = STATE["bundle"]
     if bundle is None:
         return Health(status="unavailable", pipeline_version=PIPELINE_VERSION,
@@ -106,9 +106,9 @@ def health() -> Health:
         "coverage": ModelStatus(loaded=bundle.coverage.available),
         "view": ModelStatus(loaded=bundle.view.available),
         "damage": ModelStatus(loaded=bundle.damage.available,
-                              detail=None if bundle.damage.available else "non entraîné"),
+                              detail=None if bundle.damage.available else "not trained"),
         "severity": ModelStatus(loaded=bundle.severity.available,
-                                detail=None if bundle.severity.available else "non entraîné"),
+                                detail=None if bundle.severity.available else "not trained"),
         "parts": ModelStatus(loaded=bundle.parts.available),
     }
     ready = bundle.coverage.available or bundle.view.available
@@ -120,28 +120,28 @@ def health() -> Health:
 
 
 def _stage_uploads(files: list[UploadFile], directory: Path) -> list[str]:
-    """Écrit les fichiers reçus, en refusant ce qui n'est pas exploitable."""
+    """Write the uploaded files, rejecting anything unusable."""
     allowed = {e.lower() for e in IMAGE_EXTS}
     names: list[str] = []
     for upload in files:
         name = Path(upload.filename or "").name       # neutralise tout ../
         if not name or Path(name).suffix.lower() not in allowed:
             raise HTTPException(
-                415, f"{name or '(sans nom)'}: extension non supportée. Attendu: {sorted(allowed)}"
+                415, f"{name or '(unnamed)'}: unsupported extension. Expected one of {sorted(allowed)}"
             )
         size = 0
         with (directory / name).open("wb") as fh:
             while chunk := upload.file.read(1024 * 1024):
                 size += len(chunk)
                 if size > MAX_FILE_BYTES:
-                    raise HTTPException(413, f"{name}: dépasse {MAX_FILE_BYTES // 1048576} Mo")
+                    raise HTTPException(413, f"{name}: exceeds {MAX_FILE_BYTES // 1048576} MB")
                 fh.write(chunk)
         names.append(name)
     return names
 
 
 def _analyse(claim_id: str) -> None:
-    """Analyse en tâche de fond. Ne lève jamais: l'échec devient l'état du dossier."""
+    """Background analysis. Never raises: a failure becomes the claim's state."""
     store, bundle = STATE["store"], STATE["bundle"]
     store.set_status(claim_id, PROCESSING)
     try:
@@ -154,7 +154,7 @@ def _analyse(claim_id: str) -> None:
         store.set_status(claim_id, ERROR if result["status"] == "error" else DONE,
                          result["summary"] if result["status"] == "error" else None)
     except Exception as exc:  # pragma: no cover - filet de sécurité
-        LOGGER.exception("Analyse du dossier %s en échec", claim_id)
+        LOGGER.exception("Analysis of claim %s failed", claim_id)
         store.set_status(claim_id, ERROR, str(exc))
 
 
@@ -163,13 +163,13 @@ def create_claim(
     files: Annotated[list[UploadFile], File(description="Photos du sinistre")],
     background: BackgroundTasks,
 ) -> ClaimCreated:
-    """Dépose un dossier. Répond 202; interrogez `GET /api/claims/{id}` ensuite."""
+    """Submit a claim. Returns 202; poll `GET /api/claims/{id}` afterwards."""
     _bundle()
     store = _store()
     if not files:
-        raise HTTPException(400, "Aucun fichier reçu.")
+        raise HTTPException(400, "No file received.")
     if len(files) > MAX_FILES:
-        raise HTTPException(413, f"{len(files)} fichiers reçus, maximum {MAX_FILES}.")
+        raise HTTPException(413, f"{len(files)} files received, maximum is {MAX_FILES}.")
 
     claim = store.create()
     try:
@@ -192,7 +192,7 @@ def list_claims() -> list[ClaimSummary]:
 
 @app.get("/api/claims/{claim_id}", response_model=ClaimStatus, tags=["claims"])
 def get_claim(claim_id: str) -> ClaimStatus:
-    """État d'un dossier, avec le constat dès que l'analyse est terminée."""
+    """Claim state, with the report as soon as the analysis is done."""
     store = _store()
     try:
         claim = store.get(claim_id)
@@ -221,7 +221,7 @@ def get_claim_image(claim_id: str, filename: str, thumb: bool = False) -> FileRe
 
 
 def serve() -> None:
-    """Point d'entrée `claimsight-serve`."""
+    """`claimsight-serve` entry point."""
     import argparse
 
     import uvicorn

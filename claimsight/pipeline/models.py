@@ -1,4 +1,4 @@
-"""Chargement des modèles du pipeline.
+"""Loading the pipeline's models.
 
 Remplace view_model.py / damage_model.py / severity_model.py, qui étaient
 trois classes quasi identiques. Tout passe désormais par
@@ -20,7 +20,7 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class ModelBundle:
-    """Les trois classifieurs du pipeline, chargés une seule fois.
+    """The pipeline's classifiers and detector, loaded once.
 
     Destiné à être instancié au démarrage d'un service (et non par requête):
     construire un ResNet + charger son state_dict coûte plusieurs centaines de
@@ -53,19 +53,24 @@ class ModelBundle:
         has_view = view_checkpoint and Path(view_checkpoint).exists()
         if not (has_coverage or has_view):
             raise FileNotFoundError(
-                "Aucun modèle d'orientation disponible.\n"
-                f"  couverture : {coverage_checkpoint or '(non fourni)'}\n"
-                f"  vue        : {view_checkpoint or '(non fourni)'}\n"
-                "Entraînez au moins le modèle de couverture:\n"
-                "  python scripts/derive_coverage_labels.py --dataset <dataset_pièces> "
+                "No coverage model available — the pipeline cannot start.\n"
+                f"  coverage : {coverage_checkpoint or '(not provided)'}\n"
+                f"  view     : {view_checkpoint or '(not provided)'}\n"
+                "\n"
+                "Weights are not in the repository. Either download them:\n"
+                "  https://github.com/NCH04/Claimsight/releases/latest\n"
+                "  (extract into models/)\n"
+                "\n"
+                "or train the coverage model yourself:\n"
+                "  python scripts/derive_coverage_labels.py --dataset <parts_dataset> "
                 "--out dataset/coverage_derived.csv\n"
                 "  claimsight-train --task coverage --csv_path dataset/coverage_derived.csv "
                 "--images_dir <images> --final_fit"
             )
 
-        # Sous le seuil, le classifieur renvoie `unknown` plutôt qu'une
-        # étiquette peu fiable: c'est ce qui empêche une vue devinée à 0.18
-        # de compter comme couverture photo.
+        # Below the threshold the classifier returns `unknown` rather than an
+        # unreliable label: that is what stops a face guessed at 0.18 from
+        # counting as photo coverage.
         limits = {**MIN_CONFIDENCE, **(thresholds or {})}
         bundle = cls(
             coverage=ImageClassifier(coverage_checkpoint, device, 0.0, "coverage"),
@@ -76,14 +81,16 @@ class ModelBundle:
         )
         if not bundle.parts.available:
             LOGGER.warning(
-                "Détecteur de pièces indisponible -> `damaged_parts` et `raw_detections` "
-                "resteront vides. Entraînez-le avec: claimsight-train-parts"
+                "Part detector unavailable -> `damaged_parts` and `raw_detections` "
+                "will stay empty. Download the weights, or train it with: "
+                "claimsight-train-parts"
             )
         for name in ("damage", "severity"):
             if not getattr(bundle, name).available:
                 LOGGER.warning(
-                    "Modèle %s indisponible -> prédictions `unknown`. "
-                    "Entraînez-le avec: python -m claimsight.training.train_classifier --task %s ...",
+                    "Model %s unavailable -> `unknown` predictions. Download the "
+                    "weights, or train it with: python -m "
+                    "claimsight.training.train_classifier --task %s ...",
                     name, name,
                 )
         return bundle

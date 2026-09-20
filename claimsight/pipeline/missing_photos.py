@@ -9,7 +9,7 @@ RIGHT = {"right", "front-right", "rear-right"}
 
 
 def detect_missing(views: Iterable[str]) -> list[str]:
-    """Retourne la liste des catégories manquantes parmi front/rear/left/right."""
+    """The missing categories among front/rear/left/right."""
     views_set = set(views)
     missing = []
     if not (views_set & FRONT):
@@ -25,7 +25,7 @@ def detect_missing(views: Iterable[str]) -> list[str]:
 
 
 def missing_from_faces(covered: Iterable[str]) -> list[str]:
-    """Faces non documentées, à partir d'un ensemble de faces couvertes.
+    """Faces with no photo, given the set of covered faces.
 
     Chemin direct utilisé quand le modèle de couverture (multi-label) est
     disponible: il prédit déjà les faces, sans passer par les dix vues.

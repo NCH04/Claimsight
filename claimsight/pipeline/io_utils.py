@@ -1,4 +1,4 @@
-"""Entrées/sorties du pipeline."""
+"""Pipeline I/O."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from PIL import Image
 from ..domain.taxonomy import UNKNOWN  # noqa: F401  (ré-export pratique)
 from ..training.dataset import load_rgb
 
-#: Garde-fou anti "decompression bomb": une image de 8000x8000 décodée en RGB
+#: Decompression-bomb guard: an 8000x8000 image decoded to RGB
 #: fait ~190 Mo en RAM. On refuse au-delà de ce seuil plutôt que de faire
 #: tomber le process.
 MAX_PIXELS = 40_000_000
@@ -20,7 +20,7 @@ IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
 
 def list_images(images_dir: str | Path, recursive: bool = False) -> list[Path]:
-    """Liste les images d'un dossier, triées pour un ordre déterministe."""
+    """List a folder's images, sorted so the order is deterministic."""
     root = Path(images_dir)
     if not root.exists() or not root.is_dir():
         raise FileNotFoundError(f"Dossier d'images introuvable: {images_dir}")
@@ -31,7 +31,7 @@ def list_images(images_dir: str | Path, recursive: bool = False) -> list[Path]:
 
     if not files:
         hint = "" if recursive else " (essayez recursive=True si les images sont en sous-dossiers)"
-        raise ValueError(f"Aucune image dans {images_dir} avec les extensions {IMAGE_EXTS}{hint}")
+        raise ValueError(f"No image in {images_dir} with extensions {IMAGE_EXTS}{hint}")
     return files
 
 
@@ -45,7 +45,7 @@ def load_image(path: str | Path) -> Image.Image:
     try:
         return load_rgb(path)
     except Exception as exc:
-        raise ValueError(f"Chargement impossible de {path}: {exc}") from exc
+        raise ValueError(f"Could not load {path}: {exc}") from exc
 
 
 def ensure_parent(path: Path) -> None:

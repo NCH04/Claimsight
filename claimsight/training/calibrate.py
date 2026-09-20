@@ -216,7 +216,7 @@ def main(argv: list[str] | None = None) -> None:
         n_images = len(df)
 
     temperature = fit_temperature(logits, targets, task.multilabel)
-    LOGGER.info("Température optimale : %.4f  (>1 = le modèle était sur-confiant)", temperature)
+    LOGGER.info("Optimal temperature : %.4f  (>1 = the model was overconfident)", temperature)
 
     if task.multilabel:
         before = torch.sigmoid(logits).numpy()
@@ -240,8 +240,8 @@ def main(argv: list[str] | None = None) -> None:
         ece_after = expected_calibration_error(after.max(1), (after.argmax(1) == y))
         thresholds = {}
 
-    LOGGER.info("ECE avant : %.4f", ece_before)
-    LOGGER.info("ECE après : %.4f  (%+.1f %%)", ece_after,
+    LOGGER.info("ECE before : %.4f", ece_before)
+    LOGGER.info("ECE after  : %.4f  (%+.1f %%)", ece_after,
                 100 * (ece_after - ece_before) / max(ece_before, 1e-9))
     for name, thr in thresholds.items():
         LOGGER.info("  seuil %-8s %.2f", name, thr)
@@ -261,7 +261,7 @@ def main(argv: list[str] | None = None) -> None:
         ckpt["temperature"] = temperature
         ckpt["thresholds"] = thresholds
         torch.save(ckpt, args.checkpoint)
-        LOGGER.info("Checkpoint mis à jour: temperature + thresholds inscrits.")
+        LOGGER.info("Checkpoint updated: temperature + thresholds written in.")
 
 
 if __name__ == "__main__":

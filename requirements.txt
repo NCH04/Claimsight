@@ -8,7 +8,7 @@
 # CPU uniquement (plus léger) :
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-torch>=2.2
+torch>=2.4  # torch.amp.GradScaler générique (--amp)
 torchvision>=0.17
 pillow>=10.0
 numpy>=1.26

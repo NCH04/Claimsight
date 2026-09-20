@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "claimsight"
-version = "0.2.0"
+version = "1.0.0"
 description = "Automated vehicle damage assessment from claim photos: view classification, damage and severity grading, part detection."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Nabil Chartouni" }]
 keywords = ["computer-vision", "pytorch", "yolo", "insurance", "claims", "damage-detection"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -23,7 +23,8 @@ classifiers = [
 
 # Dépendances du coeur: inférence + pipeline.
 dependencies = [
-    "torch>=2.2",
+    # 2.4 introduit torch.amp.GradScaler générique, utilisé par --amp.
+    "torch>=2.4",
     "torchvision>=0.17",
     "pillow>=10.0",
     "numpy>=1.26",

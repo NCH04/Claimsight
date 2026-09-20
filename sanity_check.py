@@ -1,7 +1,11 @@
 """Contrôle rapide du pipeline V1 sur quelques images.
 
-    python sanity_check.py --images_dir dataset/images_mapped \
-        --view_checkpoint models/view.pt --max_images 3
+Vérifie que le résultat porte bien toutes les clés du schéma de référence — le
+contrat que consomment l'API et le front. Les modèles sont optionnels: un
+checkpoint absent dégrade la prédiction en `unknown` au lieu de tout arrêter,
+et le contrôle porte sur la forme du résultat, pas sur sa justesse.
+
+    python sanity_check.py --images_dir dataset/images_mapped --max_images 3
 """
 
 from __future__ import annotations
@@ -76,9 +80,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--images_dir", required=True)
-    ap.add_argument("--view_checkpoint", required=True)
-    ap.add_argument("--damage_checkpoint", default=None)
-    ap.add_argument("--severity_checkpoint", default=None)
+    ap.add_argument("--coverage_checkpoint", default="models/coverage.pt")
+    ap.add_argument("--view_checkpoint", default=None,
+                    help="Optionnel: la couverture a remplacé la vue en V1")
+    ap.add_argument("--damage_checkpoint", default="models/damage.pt")
+    ap.add_argument("--severity_checkpoint", default="models/severity.pt")
+    ap.add_argument("--parts_checkpoint", default="models/parts.pt")
     ap.add_argument("--schema", default="specs/pipeline_schema.json")
     ap.add_argument("--out_json", default="outputs/sanity_result.json")
     ap.add_argument("--max_images", type=int, default=3)
@@ -95,9 +102,11 @@ def main() -> int:
         run_pipeline(
             images_dir=str(tmp_dir),
             out_json=args.out_json,
+            coverage_checkpoint=args.coverage_checkpoint,
             view_checkpoint=args.view_checkpoint,
             damage_checkpoint=args.damage_checkpoint,
             severity_checkpoint=args.severity_checkpoint,
+            parts_checkpoint=args.parts_checkpoint,
         )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

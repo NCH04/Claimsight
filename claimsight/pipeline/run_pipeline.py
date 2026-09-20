@@ -67,8 +67,8 @@ def run_pipeline(
     out_json: str | None = None,
     coverage_checkpoint: str | None = "models/coverage.pt",
     view_checkpoint: str | None = "models/view.pt",
-    damage_checkpoint: str | None = None,
-    severity_checkpoint: str | None = None,
+    damage_checkpoint: str | None = "models/damage.pt",
+    severity_checkpoint: str | None = "models/severity.pt",
     parts_checkpoint: str | None = "models/parts.pt",
     bundle: ModelBundle | None = None,
     recursive: bool = False,
@@ -239,7 +239,8 @@ def run_pipeline(
         "pipeline_version": PIPELINE_VERSION,
         "status": "ok_with_warnings" if (errors or warnings) else "ok",
         "vehicle_id": None,
-        "summary": make_summary(legacy_views, agg_damage.label, agg_severity.label),
+        "summary": make_summary(legacy_views, agg_damage.label, agg_severity.label,
+                                damaged_parts),
         "damaged_parts": damaged_parts,
         "missing_photos": missing,
         "input_images": input_images,
@@ -293,8 +294,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Modèle multi-label de couverture photo (alimente missing_photos)")
     ap.add_argument("--view_checkpoint", default="models/view.pt",
                     help="Modèle de vue (optionnel, descriptif)")
-    ap.add_argument("--damage_checkpoint", default=None)
-    ap.add_argument("--severity_checkpoint", default=None)
+    ap.add_argument("--damage_checkpoint", default="models/damage.pt")
+    ap.add_argument("--severity_checkpoint", default="models/severity.pt")
     ap.add_argument("--parts_checkpoint", default="models/parts.pt",
                     help="Détecteur de pièces YOLO (alimente raw_detections et damaged_parts)")
     ap.add_argument("--recursive", action="store_true")

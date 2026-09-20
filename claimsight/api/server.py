@@ -50,8 +50,8 @@ async def lifespan(app: FastAPI):
         STATE["bundle"] = ModelBundle.load(
             coverage_checkpoint=os.getenv("CLAIMSIGHT_COVERAGE", "models/coverage.pt"),
             view_checkpoint=os.getenv("CLAIMSIGHT_VIEW", "models/view.pt"),
-            damage_checkpoint=os.getenv("CLAIMSIGHT_DAMAGE") or None,
-            severity_checkpoint=os.getenv("CLAIMSIGHT_SEVERITY") or None,
+            damage_checkpoint=os.getenv("CLAIMSIGHT_DAMAGE", "models/damage.pt"),
+            severity_checkpoint=os.getenv("CLAIMSIGHT_SEVERITY", "models/severity.pt"),
             parts_checkpoint=os.getenv("CLAIMSIGHT_PARTS", "models/parts.pt"),
         )
         LOGGER.info("Modèles chargés.")

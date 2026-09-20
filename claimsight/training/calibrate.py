@@ -17,6 +17,17 @@ Deux opérations, l'une après l'autre:
 
     python -m claimsight.training.calibrate --checkpoint models/coverage.pt \\
         --csv_path dataset/coverage_derived.csv --images_dir <images>
+
+**Hors-fold.** `--final_fit` entraîne sur 100 % des données: il ne reste alors
+aucune image que le modèle final n'ait vue, et calibrer sur du déjà-vu donne
+une température trop proche de 1. `--oof_from` contourne le problème sans
+sacrifier de données: on rejoue le découpage en folds, chaque checkpoint de
+fold prédit SON fold de validation — qu'il n'a jamais vu — et la température
+est ajustée sur la concaténation, qui couvre tout le jeu proprement.
+
+    python -m claimsight.training.calibrate --checkpoint models/damage.pt \\
+        --csv_path dataset/damage_mixed.csv --images_dir / \\
+        --oof_from outputs/train/damage_mixed --group_column photo_id --write
 """
 
 from __future__ import annotations
@@ -101,6 +112,56 @@ def best_thresholds(probs: np.ndarray, targets: np.ndarray, classes: list[str]) 
     return out
 
 
+def collect_oof_logits(args, task, meta, device) -> tuple[torch.Tensor, torch.Tensor, int]:
+    """Logits hors-fold: chaque checkpoint de fold ne voit que SON fold.
+
+    Rejoue exactement le découpage de l'entraînement — même splitter, mêmes
+    strates, mêmes groupes, même graine — donc chaque ligne est prédite par le
+    seul modèle qui ne l'a pas eue en apprentissage. La concaténation couvre
+    tout le jeu sans qu'aucune prédiction ne soit contaminée.
+    """
+    from .train_classifier import _stratify_key, build_splitter, load_dataframe
+
+    df, labels, group_col = load_dataframe(args, task)
+    if list(labels) != list(meta.classes):
+        raise SystemExit(
+            f"Classes du checkpoint {list(meta.classes)} != classes du CSV {list(labels)}.\n"
+            "Le CSV n'est pas celui qui a produit ces folds."
+        )
+
+    splitter, grouped = build_splitter(args, group_col)
+    if args.group_column and not grouped:
+        raise SystemExit(f"Colonne de groupe {args.group_column!r} absente: "
+                         "les folds ne seraient pas ceux de l'entraînement.")
+
+    label2idx = {c: i for i, c in enumerate(meta.classes)}
+    transform = build_eval_transform(meta.img_size, meta.resize_mode, meta.normalize)
+    folds_dir = Path(args.oof_from)
+
+    all_logits, all_targets, n_folds = [], [], 0
+    strata = _stratify_key(df, task)
+    groups = df[group_col] if grouped else None
+    for fold, (_, va_idx) in enumerate(splitter.split(df, strata, groups)):
+        ckpt = folds_dir / f"{task.name}_fold{fold}.pt"
+        if not ckpt.exists():
+            raise SystemExit(f"Checkpoint de fold manquant: {ckpt}")
+        state, fold_meta = load_checkpoint(ckpt)
+        model = build_backbone(fold_meta.arch, len(fold_meta.classes), pretrained=False)
+        model.load_state_dict(state)
+        model.to(device).eval()
+
+        dataset = ClassificationDataset(df.iloc[va_idx], args.images_dir, label2idx,
+                                        task, transform, train=False)
+        loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers)
+        logits, targets = collect_logits(model, loader, device)
+        LOGGER.info("  fold %d : %d images hors-fold", fold + 1, len(targets))
+        all_logits.append(logits)
+        all_targets.append(targets)
+        n_folds += 1
+
+    return torch.cat(all_logits), torch.cat(all_targets), n_folds
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -112,6 +173,15 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--num_workers", type=int, default=4)
     ap.add_argument("--device", default=None)
     ap.add_argument("--sample", type=int, default=0, help="Limiter à N images (0 = tout)")
+    ap.add_argument("--oof_from", default=None,
+                    help="Dossier des checkpoints de fold: calibre hors-fold "
+                         "(seule option correcte après --final_fit)")
+    ap.add_argument("--group_column", default=None,
+                    help="Colonne de groupe du découpage d'origine (ex: photo_id)")
+    ap.add_argument("--k", type=int, default=4, help="Nombre de folds d'origine")
+    ap.add_argument("--seed", type=int, default=42, help="Graine du découpage d'origine")
+    ap.add_argument("--drop_optional", action="store_true",
+                    help="Doit refléter l'entraînement d'origine")
     ap.add_argument("--write", action="store_true",
                     help="Écrit temperature et thresholds DANS le checkpoint")
     args = ap.parse_args(argv)
@@ -121,22 +191,29 @@ def main(argv: list[str] | None = None) -> None:
     task = get_task(args.task or meta.task)
     device = torch.device(args.device or ("cuda" if torch.cuda.is_available() else "cpu"))
 
-    model = build_backbone(meta.arch, len(meta.classes), pretrained=False)
-    model.load_state_dict(state)
-    model.to(device).eval()
+    if args.oof_from:
+        LOGGER.info("Calibration HORS-FOLD de %s (folds: %s)", args.checkpoint, args.oof_from)
+        logits, targets, n_folds = collect_oof_logits(args, task, meta, device)
+        n_images = len(targets)
+        LOGGER.info("  %d images hors-fold sur %d folds", n_images, n_folds)
+    else:
+        model = build_backbone(meta.arch, len(meta.classes), pretrained=False)
+        model.load_state_dict(state)
+        model.to(device).eval()
 
-    df = pd.read_csv(args.csv_path)
-    if args.sample:
-        df = df.sample(n=min(args.sample, len(df)), random_state=42).reset_index(drop=True)
-    label2idx = {c: i for i, c in enumerate(meta.classes)}
-    dataset = ClassificationDataset(
-        df, args.images_dir, label2idx, task,
-        build_eval_transform(meta.img_size, meta.resize_mode, meta.normalize), train=False,
-    )
-    loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers)
+        df = pd.read_csv(args.csv_path)
+        if args.sample:
+            df = df.sample(n=min(args.sample, len(df)), random_state=42).reset_index(drop=True)
+        label2idx = {c: i for i, c in enumerate(meta.classes)}
+        dataset = ClassificationDataset(
+            df, args.images_dir, label2idx, task,
+            build_eval_transform(meta.img_size, meta.resize_mode, meta.normalize), train=False,
+        )
+        loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers)
 
-    LOGGER.info("Calibration de %s sur %d images", args.checkpoint, len(df))
-    logits, targets = collect_logits(model, loader, device)
+        LOGGER.info("Calibration de %s sur %d images", args.checkpoint, len(df))
+        logits, targets = collect_logits(model, loader, device)
+        n_images = len(df)
 
     temperature = fit_temperature(logits, targets, task.multilabel)
     LOGGER.info("Température optimale : %.4f  (>1 = le modèle était sur-confiant)", temperature)
@@ -170,7 +247,8 @@ def main(argv: list[str] | None = None) -> None:
         LOGGER.info("  seuil %-8s %.2f", name, thr)
 
     report = {
-        "checkpoint": args.checkpoint, "task": task.name, "n_images": len(df),
+        "checkpoint": args.checkpoint, "task": task.name, "n_images": n_images,
+        "method": "out-of-fold" if args.oof_from else "holdout",
         "temperature": temperature, "thresholds": thresholds,
         "ece_before": ece_before, "ece_after": ece_after,
     }

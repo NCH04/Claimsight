@@ -1,4 +1,4 @@
-.PHONY: install install-cpu test lint web-install web-dev web-build calibrate serve pipeline sanity check-skew derive-coverage fetch-damage derive-damage annotate train-coverage train-view train-damage train-severity train-parts yolo-config clean
+.PHONY: install install-cpu test lint web-install web-dev web-build calibrate serve pipeline sanity check-skew calibrate-oof derive-coverage fetch-damage derive-damage annotate train-coverage train-view train-damage train-severity train-parts yolo-config clean
 
 # Utilise le venv du projet s'il existe: `make` ne doit pas dépendre du fait
 # que l'utilisateur ait activé l'environnement.
@@ -77,6 +77,14 @@ check-skew:                    ## Vérifie que le classifieur voit les crops com
 
 calibrate:                     ## Calibre un checkpoint (température + seuils par classe)
 	$(PY) -m claimsight.training.calibrate --checkpoint $(CKPT) --csv_path $(CSV) --images_dir $(IMAGES) --write
+
+calibrate-oof:                 ## Calibre damage + severity hors-fold (après --final_fit)
+	$(PY) -m claimsight.training.calibrate --checkpoint models/damage.pt \
+	      --csv_path $(DAMAGE_CSV) --images_dir / --group_column photo_id \
+	      --oof_from outputs/train/damage_mixed --write
+	$(PY) -m claimsight.training.calibrate --checkpoint models/severity.pt \
+	      --csv_path $(DAMAGE_CSV) --images_dir / --group_column photo_id \
+	      --oof_from outputs/train/severity_mixed --write
 
 serve:                         ## Lance l'API sur http://127.0.0.1:8000 (docs sur /docs)
 	$(PY) -m uvicorn claimsight.api.server:app --reload

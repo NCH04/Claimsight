@@ -378,6 +378,34 @@ same 89 photos that widen their fold-to-fold spread. A single 0.5 would have
 been wrong in both directions at once. Both values are written into the
 checkpoint and applied at inference.
 
+### Calibrating a model that saw everything
+
+`--final_fit` retrains on 100% of the data to produce the deployable artefact,
+which leaves nothing unseen to calibrate it against. Fitting a temperature on
+data the model memorised returns a number close to 1 for the wrong reason.
+
+The way out costs no data. The four fold checkpoints are still on disk, and
+each one never saw its own validation fold — so replaying the split and letting
+each fold model predict only its own fold yields **clean predictions covering
+every one of the 10 583 examples**. `--oof_from` does exactly that, reusing the
+trainer's own splitter, strata and seed so the folds are the ones that were
+actually trained.
+
+| | temperature | ECE before | ECE after |
+|---|---|---|---|
+| **Severity** | 1.13 | 0.0381 | **0.0202** (−47%) |
+| **Damage** | 1.00 | 0.0384 | **0.0381** (−1%) |
+
+Severity was overconfident and the correction nearly halved its calibration
+error. Damage came back at **0.996 — already calibrated**, and that is a result
+rather than a failure: the trainer applies `label_smoothing=0.05` and class
+weights, and label smoothing is a confidence penalty applied during training.
+It had already done what temperature scaling would have done afterwards.
+
+Worth knowing before trusting a number like this: temperature scaling cannot
+improve accuracy, only the honesty of the confidence attached to it. A model
+that is wrong stays wrong — it just stops claiming 0.98 about it.
+
 ---
 
 ## Damage attribution
@@ -508,7 +536,8 @@ Honest state of play — this is a working pipeline, not a finished product.
 | ✅ | HTTP API — FastAPI, Pydantic contract, models loaded once at startup · React front end |
 | ✅ | Crop-domain skew closed — false positives on part crops down from 84% to 4% |
 | 🚧 | `dent` at F1 0.339 — 305 examples against 2 186 for `broken_glass`; the fix is data, not architecture |
-| 🚧 | Damage and severity are **uncalibrated** — `--final_fit` trains on all the data, leaving nothing unseen to fit a temperature on. Out-of-fold calibration is the next step, and `MIN_CONFIDENCE` stays at 0.0 until then |
+| ✅ | All three classifiers calibrated — coverage on a holdout, damage and severity out-of-fold |
+| 🚧 | `MIN_CONFIDENCE` is still 0.0 — the confidences are trustworthy now, but the precision/recall trade-off of an abstention threshold has not been measured |
 | 🚧 | Side-face coverage — derived labels cover only ~7% left/right; public car photos are shot from the front |
 | 🚧 | `wheel/rim` detection — inconsistent source annotations cap it at 0.400 mAP50 |
 | 🚧 | `missing_part` has no training data in this dataset version, so the damage model ships with 6 classes |

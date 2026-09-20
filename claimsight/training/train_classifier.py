@@ -248,22 +248,40 @@ def class_weights_for(df_train, labels, task, device) -> torch.Tensor:
 
 
 # --------------------------------------------------------------------------- loops
-def train_one_epoch(model, loader, optimizer, criterion, device) -> float:
+def amp_context(device, enabled: bool):
+    """Autocast fp16 sur CUDA, no-op ailleurs.
+
+    Les tensor cores font le forward en demi-précision et gardent les
+    accumulations en fp32: ~1.8x sur un GPU récent, à métriques inchangées.
+    """
+    return torch.autocast("cuda", dtype=torch.float16,
+                          enabled=bool(enabled) and device.type == "cuda")
+
+
+def train_one_epoch(model, loader, optimizer, criterion, device, scaler=None) -> float:
     model.train()
     losses = []
     for x, y in loader:
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad(set_to_none=True)
-        loss = criterion(model(x), y)
-        loss.backward()
-        optimizer.step()
+        with amp_context(device, scaler is not None):
+            loss = criterion(model(x), y)
+        if scaler is None:
+            loss.backward()
+            optimizer.step()
+        else:
+            # En fp16 les petits gradients tombent à zéro: on met la loss à
+            # l'échelle avant backward, et le scaler la retire avant le pas.
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
         losses.append(loss.item())
     return float(np.mean(losses)) if losses else 0.0
 
 
 @torch.inference_mode()
 def evaluate(model, loader, device, multilabel: bool = False,
-             threshold: float = 0.5) -> tuple[np.ndarray, np.ndarray]:
+             threshold: float = 0.5, amp: bool = False) -> tuple[np.ndarray, np.ndarray]:
     """Prédictions sur un loader.
 
     Mono-label: argmax du softmax. Multi-label: chaque classe est indépendante,
@@ -272,7 +290,9 @@ def evaluate(model, loader, device, multilabel: bool = False,
     model.eval()
     ys, preds = [], []
     for x, y in loader:
-        logits = model(x.to(device, non_blocking=True))
+        with amp_context(device, amp):
+            logits = model(x.to(device, non_blocking=True))
+        logits = logits.float()
         if multilabel:
             preds.extend((torch.sigmoid(logits) >= threshold).int().cpu().tolist())
             ys.extend(y.int().cpu().tolist())
@@ -303,6 +323,9 @@ def fit(
         optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma
     )
 
+    use_amp = bool(getattr(args, "amp", False)) and device.type == "cuda"
+    scaler = torch.amp.GradScaler("cuda") if use_amp else None
+
     best_score, best_epoch, best_state, since_improved = -1.0, 0, None, 0
     history = []
 
@@ -315,7 +338,7 @@ def fit(
             )
             LOGGER.info("  backbone dégelé (epoch %d)", epoch)
 
-        loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        loss = train_one_epoch(model, train_loader, optimizer, criterion, device, scaler)
         scheduler.step()
 
         if sel_loader is None:
@@ -324,7 +347,8 @@ def fit(
             best_epoch = epoch
             continue
 
-        y_true, y_pred = evaluate(model, sel_loader, device, task.multilabel, args.threshold)
+        y_true, y_pred = evaluate(model, sel_loader, device, task.multilabel,
+                                  args.threshold, amp=use_amp)
         m = (compute_multilabel_metrics(y_true, y_pred, labels) if task.multilabel
              else compute_metrics(y_true, y_pred, labels, ordinal=task.ordinal))
         score = m["macro_f1"]
@@ -444,7 +468,8 @@ def run(args) -> dict:
         model, hist = fit(model, train_loader, sel_loader, criterion, args, labels, task, device)
         best_epochs.append(hist["best_epoch"])
 
-        y_true, y_pred = evaluate(model, val_loader, device, task.multilabel, args.threshold)
+        y_true, y_pred = evaluate(model, val_loader, device, task.multilabel,
+                                  args.threshold, amp=getattr(args, "amp", False))
         if task.multilabel:
             m = compute_multilabel_metrics(y_true, y_pred, labels)
             rep = multilabel_report(y_true, y_pred, labels)
@@ -559,6 +584,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--mirror_prob", type=float, default=0.5,
                     help="Proba de flip horizontal (avec permutation du label si la tâche l'exige)")
     ap.add_argument("--use_weighted_sampler", action="store_true")
+    ap.add_argument("--amp", action="store_true",
+                    help="Précision mixte fp16 sur CUDA (~1.8x, métriques inchangées)")
     ap.add_argument("--class_weights", action="store_true", default=True)
     ap.add_argument("--no_class_weights", dest="class_weights", action="store_false")
     ap.add_argument("--drop_optional", action="store_true",

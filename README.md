@@ -9,7 +9,7 @@ Detects what was photographed, what is damaged, how badly — and which photo th
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3979D4.svg)](pyproject.toml)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.4%2B-C54D47.svg)](https://pytorch.org)
 [![CI](https://github.com/NCH04/Claimsight/actions/workflows/ci.yml/badge.svg)](https://github.com/NCH04/Claimsight/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-101%20passing-3979D4.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-102%20passing-3979D4.svg)](tests/)
 [![Ruff](https://img.shields.io/badge/lint-ruff-A87100.svg)](https://docs.astral.sh/ruff/)
 
 ![Part detections on validation images](docs/assets/parts-predictions.jpg)
@@ -50,7 +50,7 @@ number below the fold is the grouped one.
 
 **Torch stops at the domain boundary.** Aggregation, deduplication, quality
 gating and thresholds live in `claimsight/domain/` as pure Python. That is why
-101 tests run in five seconds with no GPU and no dataset.
+102 tests run in five seconds with no GPU and no dataset.
 
 ---
 
@@ -89,6 +89,14 @@ claimsight-serve                               # HTTP API on :8000, docs at /doc
 ```
 
 `missing_photos` is the field that pays for itself.
+
+![The claim report interface](docs/assets/ui-claim-report.jpg)
+
+<sub>The same report, rendered. Real output from the running pipeline: the
+coverage rose shows which faces the photos document and which are still
+missing, each part carries the damage read on its own crop, and the adjuster
+can complete the claim from the two dashed sectors. React + TypeScript, served
+by the API from <code>web/dist</code>.</sub>
 
 ---
 
@@ -580,7 +588,7 @@ Honest state of play — this is a working pipeline, not a finished product.
 | 🚧 | No evaluation on real phone photos — every number here comes from public datasets |
 
 ```bash
-make test   # 101 tests, no GPU required
+make test   # 102 tests, no GPU required
 make lint
 ```
 

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Train/serve skew</title>
+<style>
+  .viz-root{
+    color-scheme:light;
+    --surface-1:#fcfcfb; --text-primary:#0b0b0b; --text-secondary:#52514e;
+    --text-muted:#78766f; --grid:#e6e5e1;
+    --series-1:#2a78d6; --series-2:#eb6834;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#fcfcfb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .viz-root{background:var(--surface-1);width:880px;padding:44px 52px 38px}
+  h1{font-size:25px;line-height:1.25;font-weight:640;color:var(--text-primary);letter-spacing:-.018em}
+  .sub{font-size:14.5px;line-height:1.5;color:var(--text-secondary);margin-top:9px;max-width:660px}
+  .legend{display:flex;gap:26px;margin:26px 0 4px;font-size:13px;color:var(--text-secondary)}
+  .legend span{display:flex;align-items:center;gap:8px}
+  .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+  .note{font-size:12.5px;line-height:1.55;color:var(--text-muted);margin-top:14px;
+        border-top:1px solid var(--grid);padding-top:13px}
+  .note b{color:var(--text-secondary);font-weight:600}
+  text{font-family:inherit}
+</style></head>
+<body data-palette="#2a78d6,#eb6834" data-mode="light" data-surface="#fcfcfb">
+<div class="viz-root">
+  <h1>The metric was watching the wrong thing</h1>
+  <p class="sub">60 undamaged vehicles. Share the damage classifier correctly called
+     <em>no&nbsp;damage</em> — measured on the whole photo, then on the part crops
+     cut from those very same photos.</p>
+
+  <div class="legend">
+    <span><i class="sw" style="background:var(--series-1)"></i>Trained on whole photos only</span>
+    <span><i class="sw" style="background:var(--series-2)"></i>Trained on both domains</span>
+  </div>
+
+  <svg width="776" height="400" viewBox="0 0 776 400" role="img"
+       aria-label="Grouped column chart. On whole photos both models score about 100 percent. On part crops the photo-only model scores 16 percent against 96 percent for the model trained on both domains.">
+    <g stroke="var(--grid)" stroke-width="1">
+      <line x1="92" y1="340" x2="742" y2="340"/>
+      <line x1="92" y1="262.5" x2="742" y2="262.5"/>
+      <line x1="92" y1="185" x2="742" y2="185"/>
+      <line x1="92" y1="107.5" x2="742" y2="107.5"/>
+      <line x1="92" y1="30" x2="742" y2="30"/>
+    </g>
+    <g font-size="12.5" fill="var(--text-muted)" text-anchor="end">
+      <text x="80" y="344">0%</text><text x="80" y="266.5">25%</text>
+      <text x="80" y="189">50%</text><text x="80" y="111.5">75%</text>
+      <text x="80" y="34">100%</text>
+    </g>
+
+    <!-- Whole photo -->
+    <path d="M232,340 L232,39.3 Q232,35.3 236,35.3 L252,35.3 Q256,35.3 256,39.3 L256,340 Z" fill="var(--series-1)"/>
+    <path d="M258,340 L258,34 Q258,30 262,30 L278,30 Q282,30 282,34 L282,340 Z" fill="var(--series-2)"/>
+    <text x="257" y="20" font-size="13.5" font-weight="600" fill="var(--text-secondary)" text-anchor="middle">98% vs 100%</text>
+
+    <!-- Part crops -->
+    <path d="M552,340 L552,294.7 Q552,290.7 556,290.7 L572,290.7 Q576,290.7 576,294.7 L576,340 Z" fill="var(--series-1)"/>
+    <path d="M578,340 L578,46.4 Q578,42.4 582,42.4 L598,42.4 Q602,42.4 602,46.4 L602,340 Z" fill="var(--series-2)"/>
+    <text x="564" y="281" font-size="18" font-weight="700" fill="var(--text-primary)" text-anchor="middle">16%</text>
+    <text x="590" y="33" font-size="13.5" font-weight="600" fill="var(--text-secondary)" text-anchor="middle">96%</text>
+
+    <g text-anchor="middle">
+      <text x="257" y="366" font-size="14" font-weight="560" fill="var(--text-primary)">Whole photo</text>
+      <text x="257" y="386" font-size="12" fill="var(--text-muted)">what validation measured</text>
+      <text x="577" y="366" font-size="14" font-weight="560" fill="var(--text-primary)">Part crops</text>
+      <text x="577" y="386" font-size="12" fill="var(--text-muted)">what the pipeline actually sees</text>
+    </g>
+  </svg>
+
+  <p class="note">The two models are indistinguishable on whole photos — <b>98% vs 100%</b>,
+     and overall accuracy moved only 0.787&nbsp;→&nbsp;0.806. On the crops the pipeline
+     actually classifies, the gap is <b>16% vs 96%</b>: an <b>84% false-positive rate</b>
+     that no validation set was measuring. Training on both domains closed it to 4%.<br>
+     <b>ClaimSight</b> · counts: 59/60 and 44/277 before · 60/60 and 266/277 after.</p>
+</div>
+</body></html>

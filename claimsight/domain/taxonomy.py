@@ -136,7 +136,9 @@ def severity_rank(label: str) -> int:
 # Pièces (détection YOLO)
 # ---------------------------------------------------------------------------
 
-#: Liste officielle V1, alignée sur specs/supported_parts_v1.md.
+#: Liste officielle V1. specs/supported_parts_v1.md est GÉNÉRÉ d'ici
+#: (scripts/build_parts_spec.py) et vérifié en CI: la doc suit le code,
+#: jamais l'inverse.
 #: L'ORDRE EST CONTRACTUEL: l'index dans ce tuple est l'id de classe YOLO.
 #: Ne jamais réordonner sans réentraîner et régénérer configs/parts_yolo.yaml.
 PART_CLASSES: tuple[str, ...] = (
@@ -156,7 +158,7 @@ PART_CLASSES: tuple[str, ...] = (
     "wheel/rim",
 )
 
-#: Exclues de la V1 par décision produit (specs/supported_parts_v1.md §Removed).
+#: Exclues de la V1 par décision produit; les motifs sont dans build_parts_spec.py.
 #: Conservées ici pour que le remapping du dataset source puisse les ignorer
 #: explicitement plutôt que silencieusement.
 EXCLUDED_PARTS_V1: tuple[str, ...] = (

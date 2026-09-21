@@ -1,7 +1,7 @@
 # Annotation Guidelines – Vehicle Damage Pipeline (v1)
 
 ## 1. Purpose
-This document defines how images of damaged vehicles must be annotated so they can be used to train the models of the pipeline (view classification, part detection, damage detection, severity estimation).  
+This document defines how images of damaged vehicles must be annotated so they can be used to train the models of the pipeline (photo coverage, part detection, damage detection, severity estimation).  
 We are using **public datasets** as a starting point, so some labels will have to be **mapped** to our internal taxonomy.
 
 ---
@@ -24,20 +24,10 @@ We annotate up to **four levels**. If the information is not visible, we skip th
    - `out_of_scope` *(use when the view cannot be determined)*
 
 2. **Vehicle parts (if visible)**  
-   Use the exact names from `supported_parts_v1.md`:
-   - `front bumper`
-   - `rear bumper`
-   - `hood`
-   - `trunk`
-   - `windshield`
-   - `front left door`
-   - `front right door`
-   - `rear left door`
-   - `rear right door`
-   - `left fender`
-   - `right fender`
-   - `headlights`
-   - `taillights`
+   Use the exact names from [`supported_parts_v1.md`](supported_parts_v1.md),
+   which is generated from the taxonomy and is the only list to trust. Do not
+   copy it here: a second copy is how this section came to list fenders that
+   V1 had already dropped.
 
    Annotate the part **only if it is clearly present and identifiable** in the image.
 
@@ -120,15 +110,18 @@ Example (conceptual):
 This document is prose; the code governs. Every list above is defined in
 `claimsight/domain/taxonomy.py`:
 
-| Concept  | Constant          | Count |
-|----------|-------------------|-------|
-| Views    | `VIEW_CLASSES`    | 10    |
-| Damages  | `DAMAGE_LABELS`   | 6     |
-| Severity | `SEVERITY_CLASSES`| 4     |
-| Parts    | `PART_CLASSES`    | 15    |
+| Concept  | Constant           | Count |
+|----------|--------------------|-------|
+| Faces    | `COVERAGE_FACES`   | 4     |
+| Views    | `VIEW_CLASSES`     | 10 *(descriptive only — no model in V1)* |
+| Damages  | `DAMAGE_LABELS`    | 6     |
+| Severity | `SEVERITY_CLASSES` | 4     |
+| Parts    | `PART_CLASSES`     | 12    |
 
-Never redefine a class list anywhere else. Doing so is what previously let this
-document and the dataset scripts drift apart (15 parts here, 17 in the code).
+Never redefine a class list anywhere else. Doing so is what let this document
+and the dataset scripts drift apart before — and later let this very file
+advertise 15 parts while the code had 12. `supported_parts_v1.md` is now
+generated and checked in CI for exactly that reason.
 
 `unknown` is not in any list: it is the abstention value returned when a model
 is unavailable or its confidence falls under the configured threshold.
@@ -141,8 +134,8 @@ Public datasets rarely use our vocabulary, so each source gets an explicit
 mapping file under `configs/`, keyed by the source's own class ids:
 
 - `configs/source_part_ids_carparts_seg.json` — Carparts Segmentation
-  (Ultralytics, CC BY 4.0). Covers 11 of our 15 parts; the four `fender`
-  classes have no equivalent and stay unlabelled until annotated in-house.
+  (Ultralytics, CC BY 4.0). Covers all 12 parts. The four `fender` classes
+  were dropped from V1 precisely because the source has no equivalent.
 
 Rules for a mapping file:
 

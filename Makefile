@@ -57,8 +57,9 @@ train-severity:                ## Entraîne le classifieur de gravité (images e
 	$(PY) -m claimsight.training.train_classifier --task severity --csv_path $(DAMAGE_CSV) \
 	      --images_dir / --group_column photo_id --class_weights --amp --final_fit
 
-yolo-config:                   ## (Re)génère configs/parts_yolo.yaml depuis la taxonomie
+yolo-config:                   ## (Re)génère les fichiers dérivés de la taxonomie
 	$(PY) scripts/build_yolo_config.py
+	$(PY) scripts/build_parts_spec.py
 
 train-parts: yolo-config       ## Entraîne le détecteur de pièces
 	$(PY) -m claimsight.training.train_parts_yolo

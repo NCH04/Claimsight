@@ -1,8 +1,16 @@
-# Supported Photo Types (Views)
+# Photo coverage and view categories
 
-Each image must be labeled with **exactly one** view category.
+**V1 ships photo coverage, not view classification.** An image is labelled with
+the **faces it documents** — front, rear, left, right — and a diagonal shot
+documents two. That is the multi-label `coverage` model, and the section at the
+bottom of this page describes it.
 
-## 📷 Allowed View Categories
+The ten exclusive view categories below are kept for **description only**: the
+output schema still carries a `view_prediction` field, and `VIEW_TO_FACES`
+converts a legacy view-labelled dataset into coverage labels. No view model is
+trained in V1.
+
+## 📷 View categories (descriptive)
 
 - front  
 - rear  

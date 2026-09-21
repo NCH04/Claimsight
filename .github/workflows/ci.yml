@@ -36,8 +36,11 @@ jobs:
       - name: Tests
         run: pytest tests/ -q
 
-      - name: Generated config is in sync with the taxonomy
+      - name: Generated files are in sync with the taxonomy
         run: |
           python scripts/build_yolo_config.py --out /tmp/parts_yolo.yaml
           diff -u configs/parts_yolo.yaml /tmp/parts_yolo.yaml \
             || (echo "::error::configs/parts_yolo.yaml est désynchronisé — relancez scripts/build_yolo_config.py" && exit 1)
+          python scripts/build_parts_spec.py --out /tmp/supported_parts_v1.md
+          diff -u specs/supported_parts_v1.md /tmp/supported_parts_v1.md \
+            || (echo "::error::specs/supported_parts_v1.md est désynchronisé — relancez scripts/build_parts_spec.py" && exit 1)

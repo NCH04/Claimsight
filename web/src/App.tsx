@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClaim, imageUrl, pollClaim } from "./api";
 import { ConfidenceMeter, Dropzone, MissingList, PartsTable, StatusPill } from "./components/bits";
-import RoseDesVues, { type RoseData } from "./components/RoseDesVues";
+import CoverageRose, { type RoseData } from "./components/CoverageRose";
 import { damageLabel, pct, QUALITY_LABELS, severityLabel, viewLabel } from "./i18n";
-import type { ClaimResult, ClaimStatus, InputImage } from "./types";
+import type { ClaimResult, ClaimStatus, Health, InputImage, ModelStatus } from "./types";
 
 type Phase = "idle" | "ready" | "uploading" | "processing" | "done" | "failed";
 
@@ -38,7 +38,7 @@ function buildRoseData(result: ClaimResult): RoseData {
 
 function verdictText(result: ClaimResult): string {
   const { damage, severity } = result.image_level_damage;
-  if (damage === "none") return "Aucun dommage détecté";
+  if (damage === "none") return "No damage detected";
   if (damage === "unknown") return "Damage to be confirmed";
   if (severity === "unknown" || severity === "none") return damageLabel(damage);
   return `${damageLabel(damage)} ${severityLabel(severity).toLowerCase()}`;
@@ -59,16 +59,27 @@ export default function App() {
 
   useEffect(() => {
     fetch("/api/health")
-      .then((r) => r.json())
+      .then((r) => r.json() as Promise<Health>)
       .then((h) => {
-        if (!h.models_loaded) {
+        // Le champ lu ici était `models_loaded`, que l'API n'a jamais renvoyé:
+        // `!undefined` étant vrai, l'avertissement s'affichait en permanence.
+        if (h.status !== "ready") {
           setHealthWarning(
-            "Modèle de vue non chargé côté serveur. Placez le checkpoint dans models/view.pt puis redémarrez l'API.",
+            "No coverage model loaded. Download the weights into models/ — see the README — then restart the API.",
+          );
+          return;
+        }
+        const missing = Object.entries(h.models ?? {})
+          .filter(([, m]) => !(m as ModelStatus).loaded)
+          .map(([name]) => name);
+        if (missing.length) {
+          setHealthWarning(
+            `Running with reduced models: ${missing.join(", ")}. Those predictions will read "unknown".`,
           );
         }
       })
       .catch(() =>
-        setHealthWarning("Le serveur ne répond pas. Lancez l'API : uvicorn src.api.main:app --port 8000"),
+        setHealthWarning("The API is not responding. Start it with: claimsight-serve"),
       );
     const map = previews.current;
     return () => {
@@ -147,7 +158,7 @@ export default function App() {
   };
 
   const askForView = (category: string) => {
-    setHint(`Vue ${viewLabel(category).toLowerCase()} missing — ajoutez une photo ci-dessous.`);
+    setHint(`${viewLabel(category)} face missing — add a photo below.`);
     setDropPulse(true);
     // Différé: laisse passer le scroll natif de focus du secteur cliqué
     window.setTimeout(() => {
@@ -175,20 +186,20 @@ export default function App() {
       ? "Uploading photos…"
       : "Analysing…"
     : result
-      ? `Relancer l'analyse${count}`
-      : `Analyse le dossier${count}`;
+      ? `Re-run analysis${count}`
+      : `Analyse the claim${count}`;
 
   return (
     <>
       <header className="masthead">
         <h1>
-          Fiche d'expertise automobile
-          <small>Analyse photographique du sinistre — pipeline v1</small>
+          Vehicle claim report
+          <small>Photo analysis of a vehicle claim — pipeline v1</small>
         </h1>
         <div className="ref">
           {claim ? (
             <>
-              dossier <strong>{claim.claim_id}</strong>
+              claim <strong>{claim.claim_id}</strong>
               <br />
             </>
           ) : null}
@@ -200,7 +211,7 @@ export default function App() {
         <div className="api-error" role="alert">
           {healthWarning.includes("uvicorn") ? (
             <>
-              Le serveur ne répond pas. Lancez l'API : <code>uvicorn src.api.main:app --port 8000</code>
+              The API is not responding. Start it with <code>claimsight-serve</code>
             </>
           ) : (
             healthWarning
@@ -209,13 +220,13 @@ export default function App() {
       )}
 
       <main className="workbench">
-        {/* ----- Volet dossier ----- */}
+        {/* ----- Claim pane ----- */}
         <section className="panel" aria-label="Claim photos">
           <div className="panel-head">
             <span className="eyebrow">Claim photos</span>
             {result && (
               <button type="button" className="btn ghost" onClick={reset}>
-                Nouveau dossier
+                New claim
               </button>
             )}
           </div>
@@ -231,7 +242,7 @@ export default function App() {
                     <div className="name">{f.name}</div>
                     {result && (
                       <div className="chips">
-                        <span className="chip mono">à analyser</span>
+                        <span className="chip mono">queued</span>
                       </div>
                     )}
                   </div>
@@ -297,20 +308,20 @@ export default function App() {
         </section>
 
         {/* ----- Volet fiche ----- */}
-        <section className="panel" aria-label="Fiche d'expertise">
+        <section className="panel" aria-label="Claim report">
           {phase === "failed" && errorMsg && (
             <div className="api-error" role="alert">
-              L'analyse a échoué : {errorMsg}
+              Analysis failed: {errorMsg}
             </div>
           )}
 
           {!result ? (
             <div className="report-empty">
-              <RoseDesVues data={null} />
+              <CoverageRose data={null} />
               <p>
                 {working
-                  ? "Analysing — la fiche se remplira automatiquement."
-                  : "Aucun dossier analysé. Drop les photos du sinistre pour ouvrir la fiche : vues couvertes, dommages, pièces touchées et photos à compléter."}
+                  ? "Analysing — the report fills in as results arrive."
+                  : "No claim analysed yet. Drop the claim photos to open a report: faces covered, damage found, parts affected, and the angles still missing."}
               </p>
             </div>
           ) : (
@@ -319,7 +330,7 @@ export default function App() {
                 <div>
                   <h2>{verdictText(result)}</h2>
                   <div className="sub">
-                    {result.input_images.filter((i) => !i.deduplicated).length} photo(s) analysée(s) en{" "}
+                    {result.input_images.filter((i) => !i.deduplicated).length} photo(s) analysed in{" "}
                     {(result.processing_time_ms / 1000).toFixed(1)} s
                   </div>
                 </div>
@@ -328,35 +339,35 @@ export default function App() {
 
               {result.suspected_total_loss && (
                 <div className="banner-total-loss" role="alert">
-                  Total loss suspectée
-                  <span>— plusieurs pièces sévèrement touchées. Expertise physique recommandée.</span>
+                  Suspected total loss
+                  <span>— several parts severely damaged. On-site inspection recommended.</span>
                 </div>
               )}
 
               <div className="fiche-section">
-                <span className="eyebrow">Coverage des vues</span>
+                <span className="eyebrow">Photo coverage</span>
                 <div className="rose-wrap">
-                  <RoseDesVues data={roseData} onMissingClick={askForView} />
+                  <CoverageRose data={roseData} onMissingClick={askForView} />
                   <div className="rose-legend">
                     <div className="item">
                       <span className="swatch" style={{ background: "var(--bleu-voile)", border: "1px solid var(--bleu-constat)" }} />
-                      Vue couverte, sans dommage relevé
+                      Face covered, no damage found
                     </div>
                     <div className="item">
                       <span className="swatch" style={{ background: "var(--sev-minor)" }} />
-                      Dommage léger
+                      Minor damage
                     </div>
                     <div className="item">
                       <span className="swatch" style={{ background: "var(--sev-moderate)" }} />
-                      Dommage modéré
+                      Moderate damage
                     </div>
                     <div className="item">
                       <span className="swatch" style={{ background: "var(--sev-severe)" }} />
-                      Dommage sévère
+                      Severe damage
                     </div>
                     <div className="item">
                       <span className="swatch" style={{ border: "1.5px dashed var(--sev-severe)", background: "var(--fiche)" }} />
-                      Vue missing — cliquez pour compléter
+                      Face missing — click to complete
                     </div>
                   </div>
                 </div>
@@ -368,13 +379,13 @@ export default function App() {
               </div>
 
               <div className="fiche-section">
-                <span className="eyebrow">Photos à compléter</span>
+                <span className="eyebrow">Missing photos</span>
                 <MissingList missing={result.missing_photos} onComplete={askForView} />
               </div>
 
               <div className="fiche-section">
                 <span className="meta-line">
-                  {result.summary} — pipeline {result.pipeline_version} · statut {result.status}
+                  {result.summary} — pipeline {result.pipeline_version} · status {result.status}
                 </span>
               </div>
             </>

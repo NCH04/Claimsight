@@ -25,7 +25,7 @@ export function imageUrl(claimId: string, filename: string, thumb = false): stri
   return `${BASE}/api/claims/${claimId}/images/${encodeURIComponent(filename)}${suffix}`;
 }
 
-/** Interroge le dossier jusqu'à l'état final. Renvoie une fonction d'annulation. */
+/** Polls the claim until it reaches a final state. Returns a cancel function. */
 export function pollClaim(
   claimId: string,
   onUpdate: (status: ClaimStatus) => void,
@@ -49,7 +49,7 @@ export function pollClaim(
       return;
     }
     if (Date.now() - started > timeoutMs) {
-      onError("L'analyse dépasse le délai attendu. Rechargez la page pour vérifier l'état du dossier.");
+      onError("Analysis is taking longer than expected. Reload the page to check the claim state.");
       return;
     }
     window.setTimeout(tick, intervalMs);

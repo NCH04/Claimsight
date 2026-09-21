@@ -44,7 +44,7 @@ export function Dropzone({
       }}
     >
       <strong>Drop the claim photos</strong>
-      <span>ou parcourir vos fichiers — jpg, png, webp</span>
+      <span>or browse your files — jpg, png, webp</span>
       <input
         ref={inputRef}
         type="file"
@@ -62,7 +62,7 @@ export function Dropzone({
 
 export function StatusPill({ state }: { state: "idle" | "working" | "done" | "error" }) {
   const label =
-    state === "working" ? "analyse en cours" : state === "done" ? "analysis complete" : state === "error" ? "échec" : "en attente";
+    state === "working" ? "analysing" : state === "done" ? "analysis complete" : state === "error" ? "failed" : "idle";
   const cls = state === "working" ? "working" : state === "done" ? "done" : state === "error" ? "error" : "";
   return (
     <span className={`status-pill ${cls}`}>
@@ -76,7 +76,7 @@ export function ConfidenceMeter({ value }: { value: number }) {
   return (
     <div className="confidence">
       <div className="label">
-        <span>Confidence globale</span>
+        <span>Overall confidence</span>
         <span className="value">{pct(value)}</span>
       </div>
       <div
@@ -85,7 +85,7 @@ export function ConfidenceMeter({ value }: { value: number }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(value * 100)}
-        aria-label="Confidence globale de l'analyse"
+        aria-label="Overall confidence of the analysis"
       >
         <div className="fill" style={{ width: `${Math.round(value * 100)}%` }} />
       </div>
@@ -102,8 +102,8 @@ export function PartsTable({ parts }: { parts: DamagedPart[] }) {
   if (parts.length === 0) {
     return (
       <p className="empty-note">
-        Aucune pièce localisée. Ajoutez le détecteur de pièces (models/parts.pt) pour obtenir ce
-        niveau de détail.
+        No part localised. Add the part detector (models/parts.pt) to get this level of
+        detail.
       </p>
     );
   }
@@ -111,11 +111,11 @@ export function PartsTable({ parts }: { parts: DamagedPart[] }) {
     <table className="parts">
       <thead>
         <tr>
-          <th scope="col">Pièce</th>
-          <th scope="col">Dommage</th>
-          <th scope="col">Sévérité</th>
+          <th scope="col">Part</th>
+          <th scope="col">Damage</th>
+          <th scope="col">Severity</th>
           <th scope="col">Confidence</th>
-          <th scope="col">Vues</th>
+          <th scope="col">Faces</th>
         </tr>
       </thead>
       <tbody>
@@ -143,17 +143,17 @@ export function MissingList({
   onComplete: (category: string) => void;
 }) {
   if (missing.length === 0) {
-    return <p className="empty-note">Les quatre faces du véhicule sont couvertes.</p>;
+    return <p className="empty-note">All four faces of the vehicle are covered.</p>;
   }
   return (
     <div className="missing-list">
       {missing.map((cat) => (
         <div key={cat} className="missing-item">
           <span>
-            Vue <strong>{viewLabel(cat).toLowerCase()}</strong> missing — ajoutez une photo.
+            <strong>{viewLabel(cat)}</strong> face missing — add a photo.
           </span>
           <button type="button" onClick={() => onComplete(cat)}>
-            Compléter le dossier
+            Complete the claim
           </button>
         </div>
       ))}

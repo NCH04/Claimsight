@@ -67,3 +67,11 @@ export interface ClaimStatus {
   n_images?: number;
   result?: ClaimResult | null;
 }
+
+/** Réponse de `GET /api/health`. Doit suivre `claimsight/api/schemas.py::Health`. */
+export type ModelStatus = { loaded: boolean; detail?: string | null };
+export type Health = {
+  status: "ready" | "degraded" | "unavailable";
+  pipeline_version: string;
+  models: Record<string, ModelStatus>;
+};

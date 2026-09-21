@@ -38,8 +38,17 @@ def client(monkeypatch, tmp_path):
 def test_health_reports_each_model(client):
     body = client.get("/api/health").json()
     assert body["status"] == "ready"
-    assert set(body["models"]) == {"coverage", "view", "damage", "severity", "parts"}
+    assert set(body["models"]) == {"coverage", "damage", "severity", "parts"}
     assert body["models"]["damage"]["detail"] == "not trained"
+
+
+def test_health_omits_the_retired_view_model(client):
+    """`view` a été remplacé par `coverage`: l'absence n'est pas une panne.
+
+    Le lister comme `loaded: false` faisait passer une décision produit pour
+    une dégradation — et le front affichait un avertissement permanent.
+    """
+    assert "view" not in client.get("/api/health").json()["models"]
 
 
 def test_health_is_unavailable_without_models(monkeypatch):

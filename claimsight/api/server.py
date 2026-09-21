@@ -104,13 +104,17 @@ def health() -> Health:
                       models={"_": ModelStatus(loaded=False, detail=STATE["error"])})
     models = {
         "coverage": ModelStatus(loaded=bundle.coverage.available),
-        "view": ModelStatus(loaded=bundle.view.available),
         "damage": ModelStatus(loaded=bundle.damage.available,
                               detail=None if bundle.damage.available else "not trained"),
         "severity": ModelStatus(loaded=bundle.severity.available,
                                 detail=None if bundle.severity.available else "not trained"),
         "parts": ModelStatus(loaded=bundle.parts.available),
     }
+    # `view` a été remplacé par `coverage` en V1: on ne le signale que s'il est
+    # réellement chargé. Le lister comme absent ferait passer une décision
+    # produit pour une dégradation, et le front afficherait un avertissement.
+    if bundle.view.available:
+        models["view"] = ModelStatus(loaded=True, detail="descriptive only")
     ready = bundle.coverage.available or bundle.view.available
     return Health(status="ready" if ready else "degraded",
                   pipeline_version=PIPELINE_VERSION, models=models)

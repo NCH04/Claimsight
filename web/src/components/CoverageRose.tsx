@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { viewLabel } from "../i18n";
 
 /* View rosette: silhouette du véhicule vue de dessus, entourée des 8 secteurs
-   de prise de vue. Secteur plein = vue couverte (couleur = pire sévérité),
-   secteur pointillé = vue requise missing (cliquable). */
+   de prise de vue. Secteur plein = face couverte (couleur = pire gravité),
+   secteur pointillé = face manquante (cliquable). */
 
 export interface RoseData {
   countByView: Record<string, number>;
@@ -17,14 +17,14 @@ interface Props {
 }
 
 const SECTORS: { view: string; angle: number; short: string }[] = [
-  { view: "front", angle: -90, short: "AV" },
-  { view: "front-right", angle: -45, short: "AV D" },
-  { view: "right", angle: 0, short: "D" },
-  { view: "rear-right", angle: 45, short: "AR D" },
-  { view: "rear", angle: 90, short: "AR" },
-  { view: "rear-left", angle: 135, short: "AR G" },
-  { view: "left", angle: 180, short: "G" },
-  { view: "front-left", angle: -135, short: "AV G" },
+  { view: "front", angle: -90, short: "F" },
+  { view: "front-right", angle: -45, short: "FR" },
+  { view: "right", angle: 0, short: "R" },
+  { view: "rear-right", angle: 45, short: "RR" },
+  { view: "rear", angle: 90, short: "B" },
+  { view: "rear-left", angle: 135, short: "RL" },
+  { view: "left", angle: 180, short: "L" },
+  { view: "front-left", angle: -135, short: "FL" },
 ];
 
 const CARDINALS = new Set(["front", "rear", "left", "right"]);
@@ -56,7 +56,7 @@ function wedgePath(angle: number): string {
   return `M ${x1} ${y1} A ${R2} ${R2} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${R1} ${R1} 0 0 0 ${x4} ${y4} Z`;
 }
 
-export default function RoseDesVues({ data, onMissingClick }: Props) {
+export default function CoverageRose({ data, onMissingClick }: Props) {
   // Révélation différée: les secteurs partent neutres puis se remplissent
   // en cascade (transition CSS + délais), sauf reduced-motion (géré en CSS).
   // setTimeout plutôt que requestAnimationFrame: rAF ne se déclenche pas
@@ -76,7 +76,7 @@ export default function RoseDesVues({ data, onMissingClick }: Props) {
 
   const coveredCount = Object.values(covered).filter((n) => n > 0).length;
   const ariaLabel = data
-    ? `Coverage des vues: ${coveredCount} vue(s) couverte(s)` +
+    ? `Photo coverage: ${coveredCount} face(s) covered` +
       (data.missing.length ? `, missings: ${data.missing.map(viewLabel).join(", ")}` : "")
     : "No photos analysed yet";
 
@@ -111,7 +111,7 @@ export default function RoseDesVues({ data, onMissingClick }: Props) {
               tabIndex={interactive ? 0 : undefined}
               aria-label={
                 interactive
-                  ? `Vue ${viewLabel(s.view).toLowerCase()} missing — ajoutez une photo`
+                  ? `${viewLabel(s.view)} face missing — add a photo`
                   : undefined
               }
               onClick={interactive ? () => onMissingClick(s.view) : undefined}

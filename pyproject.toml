@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "claimsight"
 version = "1.0.0"
-description = "Automated vehicle damage assessment from claim photos: view classification, damage and severity grading, part detection."
+description = "Automated vehicle damage assessment from claim photos: part detection, damage and severity grading, and which angle the adjuster forgot to shoot."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
